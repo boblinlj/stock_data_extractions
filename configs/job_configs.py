@@ -1,5 +1,5 @@
 WORKER = 20
-LOG_ROOT = ""
+JOB_ROOT = ""
 
 BLOCK = ['PTMN', 'NAN', 'KTOV', 'PIC', 'HCAC', 'PTAC', 'IOR', 'HYAC', 'PTI', 'MVC', 'MNCL', 'GEC']
 
