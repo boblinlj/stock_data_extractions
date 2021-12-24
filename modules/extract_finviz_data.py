@@ -293,21 +293,21 @@ class Finviz:
             no_of_stock_get_from_finviz = tmp.shape[0]
             n = n + no_of_stock_get_from_finviz
 
-            finviz = self._check_existing_entries_financial(tmp, 'finviz_tickers_test')
+            finviz = self._check_existing_entries_financial(tmp, 'finviz_tickers')
             # somehow the function above impacts the tmp index
             tmp.reset_index(inplace=True)
-            screener = self._check_existing_entries_financial(tmp, 'finviz_screener_test')
+            screener = self._check_existing_entries_financial(tmp, 'finviz_screener')
 
             # enter finviz
             if not finviz.empty:
                 if self._enter_db(
                         finviz[['ticker', 'company_name', 'sector', 'industry', 'country', 'market_cap', 'pe', 'price',
-                                'price_chg', 'updated_dt']], "finviz_tickers_test"):
-                    self.logger.info('{} finviz data entered successfully'.format(n))
+                                'price_chg', 'updated_dt']], "finviz_tickers"):
+                    self.logger.info('{} finviz_tickers data entered successfully'.format(n))
                 else:
-                    self.logger.info('{} finviz enter failed'.format(n))
+                    self.logger.info('{} finviz_tickers enter failed'.format(n))
             else:
-                self.logger.info('{} finviz data already exist'.format(n))
+                self.logger.info('{} finviz_tickers data already exist'.format(n))
 
             # enter finviz screener
             if not screener.empty:
@@ -322,12 +322,12 @@ class Finviz:
                                   'beta', 'atr', 'volatility_w', 'volatility_m', 'sma20', 'sma50', 'sma200',
                                   '50d_high', '50d_low', '52w_high', '52w_low', 'rsi', 'from_open', 'gap', 'recom',
                                   'avg_volume', 'rel_volume', 'price', 'price_chg', 'volume', 'earnings',
-                                  'target_price', 'ipo_date', 'updated_dt']], "finviz_screener_test"):
-                    self.logger.info('{} finviz data entered successfully'.format(n))
+                                  'target_price', 'ipo_date', 'updated_dt']], "finviz_screener"):
+                    self.logger.info('{} finviz_screener data entered successfully'.format(n))
                 else:
-                    self.logger.info('{} finviz enter failed'.format(n))
+                    self.logger.info('{} finviz_screener enter failed'.format(n))
             else:
-                self.logger.info('{} finviz data already exist'.format(n))
+                self.logger.info('{} finviz_screener data already exist'.format(n))
 
     def run(self):
         start = time.time()
@@ -339,6 +339,6 @@ class Finviz:
 
 
 if __name__ == '__main__':
-    # print(os.path.join(LOG_ROOT,'logs'))
+    # test
     finviz = Finviz('2021-12-24', loggerFileName=None)
     finviz.run()

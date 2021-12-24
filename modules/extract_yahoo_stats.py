@@ -45,8 +45,15 @@ class YahooStats:
 
     stock_lst = StockPopulation()
 
-    def __init__(self, updated_dt):
+    def __init__(self, updated_dt, batch=False, loggerFileName=None):
+        self.loggerFileName = loggerFileName
         self.updated_dt = updated_dt
+        self.batch = batch
+
+        if self.loggerFileName is not None:
+            self.logger = create_log(loggerName='Finviz', loggerFileName=self.loggerFileName)
+        else:
+            self.logger = create_log(loggerName='Finviz', loggerFileName=None)
 
     def _get_header(self):
         user_agent = random.choice(jcfg.UA_LIST)
@@ -76,10 +83,10 @@ class YahooStats:
             # try once more
             response = session.get(url, allow_redirects=False)
         except requests.exceptions.HTTPError as err2:
-            logger.debug(err2)
+            self.logger.debug(err2)
             return None
         except requests.exceptions.RequestException as err1:
-            logger.debug(err1)
+            self.logger.debug(err1)
             return None
 
         return response
@@ -137,7 +144,7 @@ class YahooStats:
             price = pd.read_json(json_data).transpose()
             price.drop(['fmt', 'longFmt'], axis=1, inplace=True, errors='ignore')
         except Exception as e:
-            logger.debug("Fail to extract stock = {}, error: {}".format(stock, e))
+            self.logger.debug("Fail to extract stock = {}, error: {}".format(stock, e))
             return pd.DataFrame()
 
         final_df = pd.concat([defaultKeyStatistics, financialData, summaryDetail, price])
@@ -177,12 +184,12 @@ class YahooStats:
             df.to_sql(name=table, con=self.cnn, if_exists='append', index=False, method='multi', chunksize=200)
             return True
         except Exception as e:
-            logger.debug(e)
+            self.logger.debug(e)
             return False
 
     def _check_entries_stat(self):
         sql = f"""SELECT distinct ticker 
-                  FROM financial.yahoo_fundamental a 
+                  FROM yahoo_fundamental a 
                   WHERE a.updated_dt = '{self.updated_dt}' """
 
         df = pd.read_sql(con=self.cnn, sql=sql)
@@ -196,12 +203,12 @@ class YahooStats:
         while trail <= 5:
             df_0 = self._get_stock_statistics(stock)
             if not df_0.empty:
-                logger.info('{} data found after {} trails'.format(stock, trail))
+                self.logger.info('{} data found after {} trails'.format(stock, trail))
                 break
             trail += 1
 
         if df_0.empty:
-            logger.info('Fail to find {} data after {} trails'.format(stock, trail))
+            self.logger.info('Fail to find {} data after {} trails'.format(stock, trail))
             self.failed_extract.append(stock)
             return stock
 
@@ -209,23 +216,24 @@ class YahooStats:
 
         # enter yahoo fundamental table
         if self._enter_db(df_1.drop(ycfg.YAHOO_STATS_DROP_COLUMNS, axis=1, errors='ignore'), 'yahoo_fundamental'):
-            logger.info("yahoo_fundamental: Yahoo statistics data entered successfully for stock = {}".format(stock))
+            self.logger.info(
+                "yahoo_fundamental: Yahoo statistics data entered successfully for stock = {}".format(stock))
         else:
-            logger.info("yahoo_fundamental: Yahoo statistics data entered failed for stock = {}".format(stock))
+            self.logger.info("yahoo_fundamental: Yahoo statistics data entered failed for stock = {}".format(stock))
             self.failed_extract.append(stock)
 
         # enter yahoo price table
         if self._enter_db(df_1[ycfg.PRICE_TABLE_COLUMNS], 'yahoo_price'):
-            logger.info("yahoo_price: Yahoo price data entered successfully for stock = {}".format(stock))
+            self.logger.info("yahoo_price: Yahoo price data entered successfully for stock = {}".format(stock))
         else:
-            logger.info("yahoo_price: Yahoo price data entered failed for stock = {}".format(stock))
+            self.logger.info("yahoo_price: Yahoo price data entered failed for stock = {}".format(stock))
             self.failed_extract.append(stock)
 
         # enter yahoo consensus table
         if self._enter_db(df_1[ycfg.YAHOO_CONSENSUS_COLUMNS], 'yahoo_consensus'):
-            logger.info("yahoo_consensus: Yahoo consensus data entered successfully for stock = {}".format(stock))
+            self.logger.info("yahoo_consensus: Yahoo consensus data entered successfully for stock = {}".format(stock))
         else:
-            logger.info("yahoo_consensus: Yahoo consensus data entered failed for stock = {}".format(stock))
+            self.logger.info("yahoo_consensus: Yahoo consensus data entered failed for stock = {}".format(stock))
             self.failed_extract.append(stock)
 
         return None
@@ -242,60 +250,35 @@ class YahooStats:
         stocks = dedup_list(stocks)
         existing_rec = self._check_entries_stat()
         stocks = returnNotMatches(stocks, existing_rec + jcfg.BLOCK)
-        parallel_process(stocks, self._extract_each_stock)
-        logger.info("-------------First Extract Ends-------------")
+        if self.batch:
+            parallel_process(stocks, self._extract_each_stock)
+        else:
+            non_parallel_process(stocks, self._extract_each_stock)
+        self.logger.info("-------------First Extract Ends-------------")
 
-        logger.info("-------------Second Extract Starts-------------")
+        self.logger.info("-------------Second Extract Starts-------------")
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
-        parallel_process(stocks, self._extract_each_stock)
-        logger.info("-------------Second Extract Ends-------------")
+        if self.batch:
+            parallel_process(stocks, self._extract_each_stock)
+        else:
+            non_parallel_process(stocks, self._extract_each_stock)
+        self.logger.info("-------------Second Extract Ends-------------")
 
-        logger.info("-------------Third Extract Starts-------------")
+        self.logger.info("-------------Third Extract Starts-------------")
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
-        parallel_process(stocks, self._extract_each_stock)
-        logger.info("-------------Third Extract Ends-------------")
+        if self.batch:
+            parallel_process(stocks, self._extract_each_stock)
+        else:
+            non_parallel_process(stocks, self._extract_each_stock)
+        self.logger.info("-------------Third Extract Ends-------------")
 
         end = time.time()
-        logger.info("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
-        logger.info("Number of Data Base Enters = {}".format(self.no_of_db_entries))
-
-    def run_bath(self):
-        start = time.time()
-
-        logger.info("-------------First Extract Starts-------------")
-        stocks = self.stock_lst.get_stock_list() \
-                 + self.stock_lst.get_stock_list_from_arron() \
-                 + self.stock_lst.get_REIT_list() \
-                 + self.stock_lst.get_ETF_list()
-
-        stocks = dedup_list(stocks)
-        existing_rec = self._check_entries_stat()
-        stocks = returnNotMatches(stocks, existing_rec + jcfg.BLOCK)
-        non_parallel_process(stocks, self._extract_each_stock)
-        logger.info("-------------First Extract Ends-------------")
-
-        logger.info("-------------Second Extract Starts-------------")
-        stocks = dedup_list(self.failed_extract)
-        self.failed_extract = []
-        non_parallel_process(stocks, self._extract_each_stock)
-        logger.info("-------------Second Extract Ends-------------")
-
-        logger.info("-------------Third Extract Starts-------------")
-        stocks = dedup_list(self.failed_extract)
-        self.failed_extract = []
-        non_parallel_process(stocks, self._extract_each_stock)
-        logger.info("-------------Third Extract Ends-------------")
-
-        end = time.time()
-        logger.info("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
-        logger.info("Number of Data Base Enters = {}".format(self.no_of_db_entries))
-
-        print("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
-        print("Number of Data Base Enters = {}".format(self.no_of_db_entries))
+        self.logger.info("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
+        self.logger.info("Number of Data Base Enters = {}".format(self.no_of_db_entries))
 
 
 if __name__ == '__main__':
-    spider = YahooStats(datetime.datetime.today().date())
+    spider = YahooStats(datetime.datetime.today().date(), )
     spider.run()
