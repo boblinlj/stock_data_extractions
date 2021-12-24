@@ -13,24 +13,13 @@ import pandas as pd
 import numpy as np
 from util.get_stock_population import StockPopulation
 import logging
-import os
+
 import time
 from util.helper_functions import *
 from util.parallel_process import *
 
 # ----------------------------------------------LOG-------------------------------------------
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-today = datetime.date.today()
-
-formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-
-file_handler = logging.FileHandler(
-    os.path.join(jcfg.JOB_ROOT, 'logs', 'yahoo_stats_{}.log'.format(today.strftime("%b-%d-%Y"))))
-file_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
+logger = logging.getLogger('daily_job')
 
 
 # ----------------------------------------------LOG-------------------------------------------
@@ -170,13 +159,13 @@ class YahooStats:
             else:
                 df[col] = np.nan
         try:
-            df['sharesShortPreviousMonthDate'] = df['sharesShortPreviousMonthDate'].apply(unix_to_regulartime)
+            df['sharesShortPreviousMonthDate'] = df['sharesShortPreviousMonthDate'].apply(unix_to_regular_time)
         except ValueError:
             df['sharesShortPreviousMonthDate'] = np.nan
 
-        df['lastFiscalYearEnd'] = df['lastFiscalYearEnd'].apply(unix_to_regulartime)
-        df['nextFiscalYearEnd'] = df['nextFiscalYearEnd'].apply(unix_to_regulartime)
-        df['mostRecentQuarter'] = df['mostRecentQuarter'].apply(unix_to_regulartime)
+        df['lastFiscalYearEnd'] = df['lastFiscalYearEnd'].apply(unix_to_regular_time)
+        df['nextFiscalYearEnd'] = df['nextFiscalYearEnd'].apply(unix_to_regular_time)
+        df['mostRecentQuarter'] = df['mostRecentQuarter'].apply(unix_to_regular_time)
         df.rename(columns={"symbol": "ticker"}, inplace=True)
         # df.drop(YAHOO_STATS_DROP_COLUMNS, axis=1, inplace=True, errors='ignore')
 

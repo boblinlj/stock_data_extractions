@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from modules.extract_yahoo_price import YahooPrice
 
 pd.set_option('mode.chained_assignment', None)
-pd.set_option('display.max_columns', None)
+# pd.set_option('display.max_columns', None)
 
 
 class CalculateFactors:

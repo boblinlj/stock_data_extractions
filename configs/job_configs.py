@@ -1,5 +1,7 @@
 WORKER = 20
 JOB_ROOT = ""
+LOG_FORMATTER = '%(levelname)s:%(name)s:%(message)s'
+LOG_LVL = 'logging.DEBUG'
 
 BLOCK = ['PTMN', 'NAN', 'KTOV', 'PIC', 'HCAC', 'PTAC', 'IOR', 'HYAC', 'PTI', 'MVC', 'MNCL', 'GEC']
 

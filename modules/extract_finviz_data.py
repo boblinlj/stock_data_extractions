@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import requests
-import datetime
+from datetime import date
 from configs import database_configs as dbcfg
 from configs import job_configs as jcfg
 from sqlalchemy import create_engine
@@ -9,17 +9,7 @@ import random
 import os
 import time
 import logging
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-today = datetime.date.today()
-
-formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-file_handler = logging.FileHandler(os.path.join(jcfg.LOG_ROOT, 'logs', 'finviz_{}.log'.format(today.strftime("%b-%d-%Y"))))
-file_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
+from util.helper_functions import create_log
 
 
 class Finviz:
@@ -33,8 +23,6 @@ class Finviz:
         f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
         pool_size=20,
         max_overflow=0)
-
-    ua_list = jcfg.UA_LIST
 
     url_base = 'https://finviz.com/screener.ashx?v=152&ft=4'
 
@@ -112,11 +100,17 @@ class Finviz:
     no_of_requests = 0
     no_of_db_entries = 0
 
-    def __init__(self, updated_dt):
+    def __init__(self, updated_dt, loggerFileName=None):
+        self.loggerFileName = loggerFileName
         self.updated_dt = updated_dt
 
+        if self.loggerFileName is not None:
+            self.logger = create_log(loggerName='Finviz', loggerFileName=self.loggerFileName)
+        else:
+            self.logger = create_log(loggerName='Finviz', loggerFileName=None)
+
     def _get_header(self):
-        user_agent = random.choice(self.ua_list)
+        user_agent = random.choice(jcfg.UA_LIST)
         headers = {
             'user-agent': user_agent,
             'authority': 'uat5.investingchannel.com',
@@ -154,10 +148,10 @@ class Finviz:
             # try once more
             response = session.get(url, allow_redirects=False)
         except requests.exceptions.HTTPError as err2:
-            logger.debug(err2)
+            self.logger.debug(err2)
             return None
         except requests.exceptions.RequestException as err1:
-            logger.debug(err1)
+            self.logger.debug(err1)
             return None
 
         return response
@@ -167,7 +161,7 @@ class Finviz:
         try:
             df = pd.read_html(response.text)[7]
         except Exception as e:
-            logger.debug(e)
+            self.logger.debug(e)
             return pd.DataFrame()
 
         if df.shape[1] == 70:
@@ -236,7 +230,7 @@ class Finviz:
             df.to_sql(name=table, con=self.cnn, if_exists='append', index=False, method='multi', chunksize=200)
             return True
         except Exception as e:
-            logger.debug(e)
+            self.logger.debug(e)
             return False
 
     def _number_of_stocks_in_finviz(self):
@@ -247,7 +241,7 @@ class Finviz:
         try:
             df = pd.read_html(response.text)[6]
         except Exception as e:
-            logger.debug(e)
+            self.logger.debug(e)
             return None
 
         if df.shape[0] == 1:
@@ -264,7 +258,7 @@ class Finviz:
         try:
             return pd.read_sql(sql=sql, con=self.cnn)
         except Exception as e:
-            logger.debug(e)
+            self.logger.debug(e)
             return pd.DataFrame()
 
     def _check_existing_entries_financial(self, df_to_check, table):
@@ -285,9 +279,10 @@ class Finviz:
         no_of_stock = self._number_of_stocks_in_finviz()
 
         if no_of_stock is None:
-            logger.debug("Failed to extract number of stocks, exit the program")
+            self.logger.debug("Failed to extract number of stocks, exit the program")
             exit()
-        logger.debug(no_of_stock)
+
+        self.logger.info(f"There are {no_of_stock} stocks to be extracted")
         n = 1
 
         while n <= no_of_stock:
@@ -298,21 +293,21 @@ class Finviz:
             no_of_stock_get_from_finviz = tmp.shape[0]
             n = n + no_of_stock_get_from_finviz
 
-            finviz = self._check_existing_entries_financial(tmp, 'finviz_tickers')
+            finviz = self._check_existing_entries_financial(tmp, 'finviz_tickers_test')
             # somehow the function above impacts the tmp index
             tmp.reset_index(inplace=True)
-            screener = self._check_existing_entries_financial(tmp, 'FINVIZ_screener')
+            screener = self._check_existing_entries_financial(tmp, 'finviz_screener_test')
 
             # enter finviz
             if not finviz.empty:
                 if self._enter_db(
                         finviz[['ticker', 'company_name', 'sector', 'industry', 'country', 'market_cap', 'pe', 'price',
-                                'price_chg', 'updated_dt']], "finviz_tickers"):
-                    logger.info('{} finviz data entered successfully'.format(n))
+                                'price_chg', 'updated_dt']], "finviz_tickers_test"):
+                    self.logger.info('{} finviz data entered successfully'.format(n))
                 else:
-                    logger.info('{} finviz enter failed'.format(n))
+                    self.logger.info('{} finviz enter failed'.format(n))
             else:
-                logger.info('{} finviz data already exist'.format(n))
+                self.logger.info('{} finviz data already exist'.format(n))
 
             # enter finviz screener
             if not screener.empty:
@@ -327,24 +322,23 @@ class Finviz:
                                   'beta', 'atr', 'volatility_w', 'volatility_m', 'sma20', 'sma50', 'sma200',
                                   '50d_high', '50d_low', '52w_high', '52w_low', 'rsi', 'from_open', 'gap', 'recom',
                                   'avg_volume', 'rel_volume', 'price', 'price_chg', 'volume', 'earnings',
-                                  'target_price', 'ipo_date', 'updated_dt']], "FINVIZ_screener"):
-                    logger.info('{} finviz data entered successfully'.format(n))
+                                  'target_price', 'ipo_date', 'updated_dt']], "finviz_screener_test"):
+                    self.logger.info('{} finviz data entered successfully'.format(n))
                 else:
-                    logger.info('{} finviz enter failed'.format(n))
+                    self.logger.info('{} finviz enter failed'.format(n))
             else:
-                logger.info('{} finviz data already exist'.format(n))
+                self.logger.info('{} finviz data already exist'.format(n))
 
     def run(self):
         start = time.time()
         self._loop_all_tickers()
         end = time.time()
 
-        logger.info("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
-        logger.info("Number of Data Base Enters = {}".format(self.no_of_db_entries))
+        self.logger.info("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
+        self.logger.info("Number of Data Base Enters = {}".format(self.no_of_db_entries))
 
 
 if __name__ == '__main__':
     # print(os.path.join(LOG_ROOT,'logs'))
-    # finviz = Finviz(datetime.datetime.today().date())
-    # finviz.run()
-    pass
+    finviz = Finviz('2021-12-24', loggerFileName=None)
+    finviz.run()

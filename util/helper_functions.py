@@ -1,4 +1,7 @@
 import datetime
+import logging
+import os
+from configs import job_configs as jcfg
 
 
 def dedup_list(ls: list):
@@ -9,9 +12,26 @@ def returnNotMatches(a, b):
     return [x for x in a if x not in b]
 
 
-def regulartime_to_unix(date):
-    return int( (date - datetime.date(1970, 1, 1) ).total_seconds())
+def regular_time_to_unix(date):
+    return int((date - datetime.date(1970, 1, 1)).total_seconds())
 
 
-def unix_to_regulartime(unix: int):
+def unix_to_regular_time(unix: int):
     return datetime.datetime.utcfromtimestamp(unix).strftime('%Y-%m-%d')
+
+
+def create_log(loggerName, loggerFileName=None):
+    logger = logging.getLogger(loggerName)
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(jcfg.LOG_FORMATTER)
+
+    if loggerFileName is None:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
+    else:
+        file_handler = logging.FileHandler(os.path.join(jcfg.JOB_ROOT, 'logs', f'{loggerFileName}.log'))
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+    return logger
