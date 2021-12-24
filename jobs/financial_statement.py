@@ -1,6 +1,5 @@
 from modules.extract_finviz_data import Finviz
 from modules.extract_yahoo_stats import YahooStats
-# from yahoo_financials import YahooFinancial
 from util.create_output_sqls import write_insert_db
 import datetime
 from util.gcp_functions import upload_to_bucket
@@ -21,6 +20,7 @@ spider2 = YahooStats(runtime)
 spider2.run_batch()
 # spider2.run()
 print("*"*30)
+
 # generate sql script for upload
 print("Start to generating output files")
 print("*"*20)
