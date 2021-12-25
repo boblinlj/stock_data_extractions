@@ -49,7 +49,6 @@ class YahooPrice:
         else:
             self.logger = create_log(loggerName='YahooPrice', loggerFileName=None)
 
-
     def _get_header(self):
         user_agent = random.choice(jcfg.UA_LIST)
         headers = {
@@ -95,6 +94,7 @@ class YahooPrice:
                          prepost=self.prepost)
 
         response = self._get_response(url)
+
         if response.status_code == 200:
             js = json.loads(response.text)
             try:
@@ -129,6 +129,7 @@ class YahooPrice:
                          prepost=self.prepost)
 
         response = self._get_response(url)
+        # self.logger.info(url)
         if response.status_code == 200:
             js = json.loads(response.text)
             try:
@@ -194,5 +195,5 @@ class YahooPrice:
 
 
 if __name__ == '__main__':
-    obj = YahooPrice('AA', start_dt=datetime.date(2000, 1, 1), end_dt=datetime.date(2021, 12, 25))
+    obj = YahooPrice('CREE', start_dt=datetime.date(2000, 1, 1), end_dt=datetime.date(2021, 12, 25))
     print(obj.get_detailed_stock_price())

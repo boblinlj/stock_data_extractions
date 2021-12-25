@@ -52,12 +52,15 @@ class PriceJob:
 
     def _run_each_stock(self, stock):
         self.logger.info(f"Start Processing stock = {stock}")
-        each_stock = YahooPrice(stock,
-                                self.start_dt,
-                                self.updated_dt,
-                                self.updated_dt,
+        each_stock = YahooPrice(stock=stock,
+                                start_dt=self.start_dt,
+                                end_dt=self.updated_dt,
+                                interval='1d',
+                                includePrePost='false',
                                 loggerFileName=self.loggerFileName)
+
         stock_df = each_stock.get_detailed_stock_price()
+        stock_df['updated_dt'] = self.updated_dt
         if stock_df.empty:
             self.logger.debug(f"Failed:Processing stock = {stock}")
         else:
@@ -77,6 +80,7 @@ class PriceJob:
     def run_job(self):
         start = time.time()
         stock_list = self.stock_list_df['ticker'].to_list()[:]
+        # stock_list = ['XEC']
         self.logger.info(f'There are {len(stock_list)} stocks to be extracted')
 
         if self.batch_run:
@@ -89,7 +93,7 @@ class PriceJob:
         insert.run_insert()
 
         self.logger.info(f"-----Upload SQL outputs to GCP-----")
-        file = f'insert_price_{self.updated_dt}.log'
+        file = f'insert_price_{self.updated_dt}.sql'
         if upload_to_bucket(file, os.path.join(jcfg.JOB_ROOT, "sql_outputs", file), 'stock_data_busket2'):
             self.logger.info("GCP upload successful for file = {}".format(file))
         else:
