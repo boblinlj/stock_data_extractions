@@ -51,9 +51,9 @@ class YahooStats:
         self.batch = batch
 
         if self.loggerFileName is not None:
-            self.logger = create_log(loggerName='Finviz', loggerFileName=self.loggerFileName)
+            self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
         else:
-            self.logger = create_log(loggerName='Finviz', loggerFileName=None)
+            self.logger = create_log(loggerName='YahooStats', loggerFileName=None)
 
     def _get_header(self):
         user_agent = random.choice(jcfg.UA_LIST)
@@ -280,5 +280,5 @@ class YahooStats:
 
 
 if __name__ == '__main__':
-    spider = YahooStats(datetime.datetime.today().date(), )
+    spider = YahooStats(datetime.datetime.today().date(), batch=False, loggerFileName=None)
     spider.run()

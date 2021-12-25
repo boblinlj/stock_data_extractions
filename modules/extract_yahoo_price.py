@@ -5,8 +5,10 @@ import random
 import datetime
 from configs import job_configs as jcfg
 from configs import prox_configs as pcfg
-from util.helper_functions import regulartime_to_unix
-from util.helper_functions import unix_to_regulartime
+from util.helper_functions import regular_time_to_unix
+from util.helper_functions import unix_to_regular_time
+from util.helper_functions import create_log
+
 
 class YahooPrice:
     YAHOO_API_URL_BASE = 'https://query1.finance.yahoo.com'
@@ -19,13 +21,19 @@ class YahooPrice:
                 'includePrePost={prepost}&' \
                 'events=div%2Csplit'
 
-    def __init__(self, stock, start_dt, end_dt, interval='1d', includePrePost='false', logger=None):
+    def __init__(self, stock, start_dt, end_dt, interval='1d', includePrePost='false', loggerFileName=None):
         self.stock = stock
         self.start_dt = start_dt
         self.end_dt = end_dt
         self.interval = interval
         self.prepost = includePrePost
-        self.logger = logger
+        self.loggerFileName = loggerFileName
+
+        if self.loggerFileName is not None:
+            self.logger = create_log(loggerName='YahooPrice', loggerFileName=self.loggerFileName)
+        else:
+            self.logger = create_log(loggerName='YahooPrice', loggerFileName=None)
+
 
     def _get_header(self):
         user_agent = random.choice(jcfg.UA_LIST)
@@ -54,24 +62,18 @@ class YahooPrice:
             # try once more
             response = session.get(url, allow_redirects=False)
         except requests.exceptions.HTTPError as err2:
-            if self.logger is None:
-                print(err2)
-            else:
-                self.logger.degub(err2)
+            self.logger.degub(err2)
             return None
         except requests.exceptions.RequestException as err1:
-            if self.logger is None:
-                print(err1)
-            else:
-                self.logger.degub(err1)
+            self.logger.degub(err1)
             return None
 
         return response
 
     def get_each_stock_price_from_yahoo_chart(self):
         url = self.YAHOO_API_URL_BASE + self.CHART_API
-        start = regulartime_to_unix(self.start_dt)
-        end = regulartime_to_unix(self.end_dt)
+        start = regular_time_to_unix(self.start_dt)
+        end = regular_time_to_unix(self.end_dt)
 
         url = url.format(ticker=self.stock,
                          start=start,
@@ -92,16 +94,17 @@ class YahooPrice:
                           'volume': data['indicators']['quote'][0]['volume'],
                           'adjclose': data['indicators']['adjclose'][0]['adjclose']}
                 output_df = pd.DataFrame.from_records(output)
-                output_df['timestamp'] = pd.to_datetime(output_df['timestamp'].apply(unix_to_regulartime),
+                output_df['timestamp'] = pd.to_datetime(output_df['timestamp'].apply(unix_to_regular_time),
                                                         format='%Y-%m-%d')
                 output_df['ticker'] = self.stock
                 return output_df
-
             except ValueError:
+                self.logger.debug(f"{self.stock} value error, variables cannot be found in Yahoo API")
                 return pd.DataFrame(
                     columns=['adjclose', 'close', 'high', 'low', 'open', 'timestamp', 'volume', 'ticker'])
 
         else:
+            self.logger.debug(f"{self.stock} response error {response.status_code}")
             return pd.DataFrame(
                 columns=['adjclose', 'close', 'high', 'low', 'open', 'timestamp', 'volume', 'ticker'])
 
