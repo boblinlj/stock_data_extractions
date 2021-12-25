@@ -3,14 +3,22 @@ import pandas as pd
 import json
 import random
 import datetime
+from sqlalchemy import create_engine
 from configs import job_configs as jcfg
 from configs import prox_configs as pcfg
+from configs import database_configs as dbcfg
 from util.helper_functions import regular_time_to_unix
 from util.helper_functions import unix_to_regular_time
 from util.helper_functions import create_log
 
 
 class YahooPrice:
+    database_user = dbcfg.MYSQL_USER
+    database_ip = dbcfg.MYSQL_HOST
+    database_pw = dbcfg.MYSQL_PASSWORD
+    database_port = dbcfg.MYSQL_PORT
+    database_nm = dbcfg.MYSQL_DATABASE
+
     YAHOO_API_URL_BASE = 'https://query1.finance.yahoo.com'
 
     CHART_API = '/v8/finance/chart/{ticker}' \
@@ -21,13 +29,20 @@ class YahooPrice:
                 'includePrePost={prepost}&' \
                 'events=div%2Csplit'
 
+    sql_max_date = "SELECT max(timestamp) FROM financial.price where ticker = '{}'"
+    cnn = create_engine(f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
+                        pool_size=20,
+                        max_overflow=0)
+
     def __init__(self, stock, start_dt, end_dt, interval='1d', includePrePost='false', loggerFileName=None):
         self.stock = stock
         self.start_dt = regular_time_to_unix(start_dt)
         self.end_dt = regular_time_to_unix(end_dt)
+        # self.end_dt = 9999999999
         self.interval = interval
         self.prepost = includePrePost
         self.loggerFileName = loggerFileName
+        self.latest_data_date = pd.read_sql(con=self.cnn, sql=self.sql_max_date.format(self.stock)).iloc[0, 0]
 
         if self.loggerFileName is not None:
             self.logger = create_log(loggerName='YahooPrice', loggerFileName=self.loggerFileName)
@@ -100,7 +115,6 @@ class YahooPrice:
                 self.logger.debug(f"{self.stock} value error, variables cannot be found in Yahoo API")
                 return pd.DataFrame(
                     columns=['adjclose', 'close', 'high', 'low', 'open', 'timestamp', 'volume', 'ticker'])
-
         else:
             self.logger.debug(f"{self.stock} response error {response.status_code}")
             return pd.DataFrame(
@@ -117,19 +131,23 @@ class YahooPrice:
         response = self._get_response(url)
         if response.status_code == 200:
             js = json.loads(response.text)
-            data = js['chart']['result'][0]
-            # form the pricing data
-            price = {'timestamp': data['timestamp'],
-                     'high': data['indicators']['quote'][0]['high'],
-                     'close': data['indicators']['quote'][0]['close'],
-                     'open': data['indicators']['quote'][0]['open'],
-                     'low': data['indicators']['quote'][0]['low'],
-                     'volume': data['indicators']['quote'][0]['volume'],
-                     'adjclose': data['indicators']['adjclose'][0]['adjclose']}
-            price_df = pd.DataFrame.from_records(price)
-            price_df['timestamp'] = pd.to_datetime(price_df['timestamp'].apply(unix_to_regular_time), format='%Y-%m-%d')
-            price_df['ticker'] = self.stock
-            price_df.set_index(['timestamp', 'ticker'], inplace=True)
+            try:
+                data = js['chart']['result'][0]
+                # form the pricing data
+                price = {'timestamp': data['timestamp'],
+                         'high': data['indicators']['quote'][0]['high'],
+                         'close': data['indicators']['quote'][0]['close'],
+                         'open': data['indicators']['quote'][0]['open'],
+                         'low': data['indicators']['quote'][0]['low'],
+                         'volume': data['indicators']['quote'][0]['volume'],
+                         'adjclose': data['indicators']['adjclose'][0]['adjclose']}
+                price_df = pd.DataFrame.from_records(price)
+                price_df['timestamp'] = pd.to_datetime(price_df['timestamp'].apply(unix_to_regular_time), format='%Y-%m-%d')
+                price_df['ticker'] = self.stock
+                price_df.set_index(['timestamp'], inplace=True)
+            except ValueError:
+                self.logger.debug(f"{self.stock} value error, variables cannot be found in Yahoo API")
+                return pd.DataFrame()
             # form the dividends data
             try:
                 dividends_df = pd.DataFrame(data['events'].get('dividends'))
@@ -142,7 +160,7 @@ class YahooPrice:
                     dividends_df.drop(columns=['index', 'date'], axis=1, inplace=True)
                     dividends_df['ticker'] = self.stock
                     dividends_df['lst_div_date'] = dividends_df['timestamp']
-                    dividends_df.set_index(['timestamp', 'ticker'], inplace=True)
+                    dividends_df.set_index(['timestamp'], inplace=True)
                     dividends_df.rename(columns={'amount': 'dividends'}, inplace=True)
                     dividends_df.sort_index(inplace=True)
                     dividends_df['t4q_dividends'] = dividends_df['dividends'].rolling(4).sum()
@@ -160,7 +178,7 @@ class YahooPrice:
                     splits_df.drop(columns=['index', 'date'], axis=1, inplace=True)
                     splits_df['ticker'] = self.stock
                     splits_df['lst_split_date'] = splits_df['timestamp']
-                    splits_df.set_index(['timestamp', 'ticker'], inplace=True)
+                    splits_df.set_index(['timestamp'], inplace=True)
                     splits_df.sort_index(inplace=True)
             except KeyError:
                 splits_df = pd.DataFrame(index=price_df.index, columns=['lst_split_date', 'denominator', 'numerator', 'splitRatio'])
@@ -168,12 +186,13 @@ class YahooPrice:
             output_df = pd.concat([price_df, dividends_df, splits_df], axis=1)
             output_df.fillna(method='ffill', inplace=True)
 
-            return output_df
-
+            return output_df.iloc[output_df.index > pd.to_datetime(self.latest_data_date)]
+            # return output_df
         else:
-            pass
+            self.logger.debug(f"{self.stock} response error {response.status_code}")
+            return pd.DataFrame()
 
 
 if __name__ == '__main__':
-    obj = YahooPrice('VET.TO', start_dt=datetime.date(2000, 1, 1), end_dt=datetime.date(2021, 12, 8))
-    print(obj.get_each_stock_price_from_yahoo_chart())
+    obj = YahooPrice('AA', start_dt=datetime.date(2000, 1, 1), end_dt=datetime.date(2021, 12, 25))
+    print(obj.get_detailed_stock_price())

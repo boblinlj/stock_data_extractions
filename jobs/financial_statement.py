@@ -19,13 +19,13 @@ spider3 = YahooFinancial(updated_dt=runtime, batch=True, loggerFileName=loggerFi
 spider3.run()
 
 insert = write_insert_db('yahoo_annual_fundamental', runtime)
-insert.run_INSERT()
+insert.run_insert()
 
 insert = write_insert_db('yahoo_quarterly_fundamental', runtime)
-insert.run_INSERT()
+insert.run_insert()
 
 insert = write_insert_db('yahoo_trailing_fundamental', runtime)
-insert.run_INSERT()
+insert.run_insert()
 
 
 print("Start Uploading Files to GCP")

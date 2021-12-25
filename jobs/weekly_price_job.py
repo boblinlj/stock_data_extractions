@@ -1,29 +1,16 @@
 from configs import database_configs as dbcfg
 from configs import job_configs as jcfg
-from helper import *
 from util.parallel_process import parallel_process
 from util.parallel_process import non_parallel_process
 from util.helper_functions import create_log
-import yahoo_price_for_backtesting as calc_mod
+from util.create_output_sqls import write_insert_db
+from util.gcp_functions import upload_to_bucket
+from modules.extract_yahoo_price import YahooPrice
 from sqlalchemy import create_engine
-from datetime import date
+from datetime import date, timedelta
 import pandas as pd
 import time
-import logging
 import os
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-today = date.today()
-
-formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-# file_handler = logging.FileHandler('/logs/yahoo_target_price_{}.log'.format(today.strftime("%b-%d-%Y")))
-
-file_handler = logging.FileHandler(os.path.join(jcfg.JOB_ROOT, 'logs', 'yahoo_price_{}.log'.format(today.strftime("%b-%d-%Y"))))
-file_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
 
 
 class PriceJob:
@@ -35,11 +22,12 @@ class PriceJob:
 
     workers = jcfg.WORKER
 
-    cnn = create_engine(f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
-                        pool_size=20,
-                        max_overflow=0)
+    cnn = create_engine(
+        f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
+        pool_size=20,
+        max_overflow=0)
 
-    sql = """
+    sql_stock_list = """
             SELECT DISTINCT yahoo_ticker as ticker
             FROM stock_list_for_cooble_stone 
             WHERE active_ind='A'
@@ -51,10 +39,11 @@ class PriceJob:
     def __init__(self, start_dt, updated_dt, batch_run=False, loggerFileName=None):
         # init the input
         self.updated_dt = updated_dt
-        self.stock_list_df = pd.read_sql(con=self.cnn, sql=self.sql)
         self.start_dt = start_dt
         self.batch_run = batch_run
         self.loggerFileName = loggerFileName
+
+        self.stock_list_df = pd.read_sql(con=self.cnn, sql=self.sql_stock_list)
 
         if self.loggerFileName is not None:
             self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
@@ -63,16 +52,19 @@ class PriceJob:
 
     def _run_each_stock(self, stock):
         self.logger.info(f"Start Processing stock = {stock}")
-        each_stock = calc_mod.YahooPrice(stock, self.start_dt, self.updated_dt, self.updated_dt)
-        stock_df = each_stock.get_each_stock_price_from_yahoo_chart()
+        each_stock = YahooPrice(stock,
+                                self.start_dt,
+                                self.updated_dt,
+                                self.updated_dt,
+                                loggerFileName=self.loggerFileName)
+        stock_df = each_stock.get_detailed_stock_price()
         if stock_df.empty:
-            self.logger.info(f"Failed:Processing stock = {stock}")
+            self.logger.debug(f"Failed:Processing stock = {stock}")
         else:
-            self.logger.info(f"Success: Processing stock = {stock}")
             if self._enter_db(stock_df, 'price'):
                 self.logger.info(f"Success: Entered stock = {stock}")
             else:
-                self.logger.info(f"Failed: Entering stock = {stock}")
+                self.logger.debug(f"Failed: Entering stock = {stock}")
 
     def _enter_db(self, df, table):
         try:
@@ -91,11 +83,28 @@ class PriceJob:
             parallel_process(stock_list, self._run_each_stock, self.workers)
         else:
             non_parallel_process(stock_list, self._run_each_stock, self.workers)
+
+        self.logger.info(f"-----Start generate SQL outputs-----")
+        insert = write_insert_db('price', self.updated_dt)
+        insert.run_insert()
+
+        self.logger.info(f"-----Upload SQL outputs to GCP-----")
+        file = f'insert_price_{self.updated_dt}.log'
+        if upload_to_bucket(file, os.path.join(jcfg.JOB_ROOT, "sql_outputs", file), 'stock_data_busket2'):
+            self.logger.info("GCP upload successful for file = {}".format(file))
+        else:
+            self.logger.debug("Failed: GCP upload failed for file = {}".format(file))
+
         end = time.time()
         self.logger.info("Extraction took {} minutes".format(round((end - start) / 60)))
 
 
 if __name__ == '__main__':
-    obj = PriceJob(date(2000, 1, 1), date.today(), batch_run=True)
-    # obj = PriceJob(datetime.date(2000, 1, 1), datetime.date(2021, 12, 18), batch_run=True)
+    loggerFileName = f"daily_yahoo_price_{date.today().strftime('%Y%m%d')}.log"
+
+    obj = PriceJob(start_dt=date.today() - timedelta(days=500),
+                   updated_dt=date.today(),
+                   batch_run=True,
+                   loggerFileName=loggerFileName)
     obj.run_job()
+

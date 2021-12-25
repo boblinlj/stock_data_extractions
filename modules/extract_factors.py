@@ -90,12 +90,12 @@ class CalculateFactors:
         self.updated_dt = updated_dt  # assuming the updated_dt is the end_dt
         self.stock = stock
         # read price factor data
-        self.price_f = YahooPrice(self.stock, start_dt, updated_dt).get_each_stock_price_from_yahoo_chart()
+        self.price_f = YahooPrice(self.stock, start_dt, updated_dt).get_basic_stock_price()
         self.price_f.rename(columns={'timestamp': 'asOfDate'}, inplace=True)
         self.price_f.drop(columns=['ticker'], axis=1, inplace=True)
         self.price_f.set_index('asOfDate', inplace=True)
 
-        self.market_f = YahooPrice(self.market, start_dt, updated_dt).get_each_stock_price_from_yahoo_chart()
+        self.market_f = YahooPrice(self.market, start_dt, updated_dt).get_basic_stock_price()
         self.market_f.rename(columns={'timestamp': 'asOfDate'}, inplace=True)
         self.market_f.drop(columns=['ticker'], axis=1, inplace=True)
         self.market_f.set_index('asOfDate', inplace=True)

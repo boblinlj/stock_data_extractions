@@ -32,7 +32,7 @@ class write_insert_db:
                 """.format(self.table, self.updated_dt)
 
         df = pd.read_sql(sql=sql, con=self.cnn)
-        print(df.head())
+        # print(df.head())
 
         return df.to_dict(orient='records')
 
@@ -62,7 +62,7 @@ class write_insert_db:
                     self.table, item.get('last_check_dt'), item.get('to_dt'), item.get('ticker'))
                 file.write(sql_query)
 
-    def run_INSERT(self):
+    def run_insert(self):
         data = self.read_table_to_insert()
         if len(data) > 0:
             self.write_insert_sql_file(data)
