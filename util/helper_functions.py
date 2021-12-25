@@ -30,7 +30,7 @@ def create_log(loggerName, loggerFileName=None):
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
     else:
-        file_handler = logging.FileHandler(os.path.join(jcfg.JOB_ROOT, 'logs', f'{loggerFileName}.log'))
+        file_handler = logging.FileHandler(os.path.join(jcfg.JOB_ROOT, 'logs', f'{loggerFileName}'))
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 

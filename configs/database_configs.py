@@ -2,4 +2,4 @@ MYSQL_HOST = '192.168.2.139'
 MYSQL_PORT = 3307
 MYSQL_USER = 'boblin'
 MYSQL_PASSWORD = 'Zuodan199064'
-MYSQL_DATABASE = 'financial'
+MYSQL_DATABASE = 'financial_test'

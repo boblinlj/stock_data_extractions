@@ -18,11 +18,7 @@ import time
 from util.helper_functions import *
 from util.parallel_process import *
 
-# ----------------------------------------------LOG-------------------------------------------
-logger = logging.getLogger('daily_job')
 
-
-# ----------------------------------------------LOG-------------------------------------------
 class YahooStats:
     BASE_URL = 'https://finance.yahoo.com/quote/{stock}/key-statistics?p={stock}'
 
@@ -241,7 +237,7 @@ class YahooStats:
     def run(self):
         start = time.time()
 
-        logger.info("-------------First Extract Starts-------------")
+        self.logger.info("-------------First Extract Starts-------------")
         stocks = self.stock_lst.get_stock_list() \
                  + self.stock_lst.get_stock_list_from_arron() \
                  + self.stock_lst.get_REIT_list() \

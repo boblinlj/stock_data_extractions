@@ -200,5 +200,5 @@ PRICE_TABLE_COLUMNS = ['ticker',
                         'preMarketChangePercent',
                         'postMarketChangePercent',
                         'regularMarketChangePercent',
-                        'preMarketPric',
+                        'preMarketPrice',
                         'updated_dt']
