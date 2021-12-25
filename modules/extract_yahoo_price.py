@@ -23,8 +23,8 @@ class YahooPrice:
 
     def __init__(self, stock, start_dt, end_dt, interval='1d', includePrePost='false', loggerFileName=None):
         self.stock = stock
-        self.start_dt = start_dt
-        self.end_dt = end_dt
+        self.start_dt = regular_time_to_unix(start_dt)
+        self.end_dt = regular_time_to_unix(end_dt)
         self.interval = interval
         self.prepost = includePrePost
         self.loggerFileName = loggerFileName
@@ -70,14 +70,12 @@ class YahooPrice:
 
         return response
 
-    def get_each_stock_price_from_yahoo_chart(self):
+    def get_basic_stock_price(self):
         url = self.YAHOO_API_URL_BASE + self.CHART_API
-        start = regular_time_to_unix(self.start_dt)
-        end = regular_time_to_unix(self.end_dt)
 
         url = url.format(ticker=self.stock,
-                         start=start,
-                         end=end,
+                         start=self.start_dt,
+                         end=self.end_dt,
                          interval=self.interval,
                          prepost=self.prepost)
 
@@ -107,6 +105,73 @@ class YahooPrice:
             self.logger.debug(f"{self.stock} response error {response.status_code}")
             return pd.DataFrame(
                 columns=['adjclose', 'close', 'high', 'low', 'open', 'timestamp', 'volume', 'ticker'])
+
+    def get_detailed_stock_price(self):
+        url = self.YAHOO_API_URL_BASE + self.CHART_API
+        url = url.format(ticker=self.stock,
+                         start=self.start_dt,
+                         end=self.end_dt,
+                         interval=self.interval,
+                         prepost=self.prepost)
+
+        response = self._get_response(url)
+        if response.status_code == 200:
+            js = json.loads(response.text)
+            data = js['chart']['result'][0]
+            # form the pricing data
+            price = {'timestamp': data['timestamp'],
+                     'high': data['indicators']['quote'][0]['high'],
+                     'close': data['indicators']['quote'][0]['close'],
+                     'open': data['indicators']['quote'][0]['open'],
+                     'low': data['indicators']['quote'][0]['low'],
+                     'volume': data['indicators']['quote'][0]['volume'],
+                     'adjclose': data['indicators']['adjclose'][0]['adjclose']}
+            price_df = pd.DataFrame.from_records(price)
+            price_df['timestamp'] = pd.to_datetime(price_df['timestamp'].apply(unix_to_regular_time), format='%Y-%m-%d')
+            price_df['ticker'] = self.stock
+            price_df.set_index(['timestamp', 'ticker'], inplace=True)
+            # form the dividends data
+            try:
+                dividends_df = pd.DataFrame(data['events'].get('dividends'))
+                if not (dividends_df.empty):
+                    dividends_df = dividends_df.transpose()
+                    dividends_df.reset_index(inplace=True)
+                    dividends_df['timestamp'] = pd.to_numeric(dividends_df['index'])
+                    dividends_df['timestamp'] = pd.to_datetime(dividends_df['timestamp'].apply(unix_to_regular_time),
+                                                               format='%Y-%m-%d')
+                    dividends_df.drop(columns=['index', 'date'], axis=1, inplace=True)
+                    dividends_df['ticker'] = self.stock
+                    dividends_df['lst_div_date'] = dividends_df['timestamp']
+                    dividends_df.set_index(['timestamp', 'ticker'], inplace=True)
+                    dividends_df.rename(columns={'amount': 'dividends'}, inplace=True)
+                    dividends_df.sort_index(inplace=True)
+                    dividends_df['t4q_dividends'] = dividends_df['dividends'].rolling(4).sum()
+            except KeyError:
+                dividends_df = pd.DataFrame(index=price_df.index, columns=['lst_div_date', 'dividends', 't4q_dividends'])
+            # form the split data
+            try:
+                splits_df = pd.DataFrame(data['events'].get('splits'))
+                if not splits_df.empty:
+                    splits_df = splits_df.transpose()
+                    splits_df.reset_index(inplace=True)
+                    splits_df['timestamp'] = pd.to_numeric(splits_df['index'])
+                    splits_df['timestamp'] = pd.to_datetime(splits_df['timestamp'].apply(unix_to_regular_time),
+                                                            format='%Y-%m-%d')
+                    splits_df.drop(columns=['index', 'date'], axis=1, inplace=True)
+                    splits_df['ticker'] = self.stock
+                    splits_df['lst_split_date'] = splits_df['timestamp']
+                    splits_df.set_index(['timestamp', 'ticker'], inplace=True)
+                    splits_df.sort_index(inplace=True)
+            except KeyError:
+                splits_df = pd.DataFrame(index=price_df.index, columns=['lst_split_date', 'denominator', 'numerator', 'splitRatio'])
+
+            output_df = pd.concat([price_df, dividends_df, splits_df], axis=1)
+            output_df.fillna(method='ffill', inplace=True)
+
+            return output_df
+
+        else:
+            pass
 
 
 if __name__ == '__main__':

@@ -87,14 +87,13 @@ class YahooStats:
 
         return response
 
-    @staticmethod
-    def _parse_html_for_json(response, stock):
+    def _parse_html_for_json(self, response, stock):
         soup = BeautifulSoup(response.text, 'html.parser')
         pattern = re.compile(r'\s--\sData\s--\s')
         try:
             script_data = soup.find('script', text=pattern).contents[0]
         except AttributeError as err:
-            logger.debug("Unable to find JSON for stock = {}".format(stock))
+            self.logger.debug("Unable to find JSON for stock = {}".format(stock))
             return None
 
         start = script_data.find("context") - 2

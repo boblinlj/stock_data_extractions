@@ -15,18 +15,6 @@ from util.parallel_process import *
 
 pd.set_option('display.max_columns', None)
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-today = datetime.date.today()
-
-formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-file_handler = logging.FileHandler(
-    os.path.join(jcfg.JOB_ROOT, 'logs', 'yahoo_financials_{}.log'.format(today.strftime("%b-%d-%Y"))))
-file_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
-
 
 class YahooFinancial:
     BASE_URL = 'https://finance.yahoo.com/quote/{stock}/key-statistics?p={stock}'
@@ -61,8 +49,15 @@ class YahooFinancial:
 
     failed_extract = []
 
-    def __init__(self, updated_dt):
+    def __init__(self, updated_dt, batch=False, loggerFileName=None):
         self.updated_dt = updated_dt
+        self.loggerFileName = loggerFileName
+        self.batch = batch
+
+        if self.loggerFileName is not None:
+            self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
+        else:
+            self.logger = create_log(loggerName='YahooStats', loggerFileName=None)
 
     def _existing_dt(self):
         sql = """
@@ -108,10 +103,10 @@ class YahooFinancial:
             # try once more
             response = session.get(url, allow_redirects=False)
         except requests.exceptions.HTTPError as err2:
-            logger.debug(err2)
+            self.logger.debug(err2)
             return None
         except requests.exceptions.RequestException as err1:
-            logger.debug(err1)
+            self.logger.debug(err1)
             return None
 
         return response
@@ -137,7 +132,7 @@ class YahooFinancial:
                 data = json.loads(response.text)
                 return data
             except Exception as e:
-                logger.debug(e)
+                self.logger.debug(e)
                 return None
         else:
             return None
@@ -148,7 +143,7 @@ class YahooFinancial:
             df.to_sql(name=table, con=self.cnn, if_exists='append', index=False, method='multi', chunksize=200)
             return True
         except Exception as e:
-            logger.debug(e)
+            self.logger.debug(e)
             return False
 
     def _extract_each_stock(self, stock):
@@ -181,13 +176,13 @@ class YahooFinancial:
 
         df_3m = self._check_existing_entries_financial(df_3m, stock, 'yahoo_quarterly_fundamental_t2')
         if df_3m.empty:
-            logger.info('Quarterly financial data already exist for stock = {}'.format(stock))
+            self.logger.info('Quarterly financial data already exist for stock = {}'.format(stock))
         else:
             df_3m = self._add_info_for_db(df_3m, stock)
             if self._enter_db(df_3m.reset_index(), 'yahoo_quarterly_fundamental_t2'):
-                logger.info("Quarterly financial data is entered successfully for stock = {}".format(stock))
+                self.logger.info("Quarterly financial data is entered successfully for stock = {}".format(stock))
             else:
-                logger.info("Quarterly financials database enter failed for stock = {}".format(stock))
+                self.logger.info("Quarterly financials database enter failed for stock = {}".format(stock))
                 self.failed_extract.append(stock)
 
     @staticmethod
@@ -253,56 +248,36 @@ class YahooFinancial:
         start = time.time()
         self._existing_dt()
 
-        logger.info("-------------First Extract Starts-------------")
+        self.logger.info("-------------First Extract Starts-------------")
         stocks = self._get_stock_list() + self._get_stock_list_from_arron()
-        logger.info("{} Stocks to be extracted".format(len(stocks)))
-        parallel_process(stocks, self._extract_each_stock)
-        logger.info(self.failed_extract)
+        self.logger.info("{} Stocks to be extracted".format(len(stocks)))
+        if self.batch:
+            parallel_process(stocks, self._extract_each_stock)
+        else:
+            non_parallel_process(stocks, self._extract_each_stock)
+        self.logger.info(self.failed_extract)
 
-        logger.info("-------------Second Extract Starts-------------")
+        self.logger.info("-------------Second Extract Starts-------------")
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
-        parallel_process(stocks, self._extract_each_stock)
-        logger.info(self.failed_extract)
+        if self.batch:
+            parallel_process(stocks, self._extract_each_stock)
+        else:
+            non_parallel_process(stocks, self._extract_each_stock)
+        self.logger.info(self.failed_extract)
 
-        logger.info("-------------Third Extract Starts-------------")
+        self.logger.info("-------------Third Extract Starts-------------")
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
-        parallel_process(stocks, self._extract_each_stock)
-        logger.info(self.failed_extract)
+        if self.batch:
+            parallel_process(stocks, self._extract_each_stock)
+        else:
+            non_parallel_process(stocks, self._extract_each_stock)
+        self.logger.info(self.failed_extract)
 
         end = time.time()
-        logger.info("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
-        logger.info("Number of Data Base Enters = {}".format(self.no_of_db_entries))
-
-    def run_batch(self):
-        start = time.time()
-        self._existing_dt()
-
-        logger.info("-------------First Extract Starts-------------")
-        stocks = self._get_stock_list() + self._get_stock_list_from_arron()
-        logger.info("{} Stocks to be extracted".format(len(stocks)))
-        non_parallel_process(stocks, self._extract_each_stock)
-        logger.info(self.failed_extract)
-
-        logger.info("-------------Second Extract Starts-------------")
-        stocks = dedup_list(self.failed_extract)
-        self.failed_extract = []
-        non_parallel_process(stocks, self._extract_each_stock)
-        logger.info(self.failed_extract)
-
-        logger.info("-------------Third Extract Starts-------------")
-        stocks = dedup_list(self.failed_extract)
-        self.failed_extract = []
-        non_parallel_process(stocks, self._extract_each_stock)
-        logger.info(self.failed_extract)
-
-        end = time.time()
-        logger.info("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
-        logger.info("Number of Data Base Enters = {}".format(self.no_of_db_entries))
-
-        print("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
-        print("Number of Data Base Enters = {}".format(self.no_of_db_entries))
+        self.logger.info("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
+        self.logger.info("Number of Data Base Enters = {}".format(self.no_of_db_entries))
 
 
 if __name__ == '__main__':
