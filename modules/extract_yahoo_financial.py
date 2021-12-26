@@ -55,9 +55,9 @@ class YahooFinancial:
         self.batch = batch
 
         if self.loggerFileName is not None:
-            self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
+            self.logger = create_log(loggerName='YahooFinancialStatements', loggerFileName=self.loggerFileName)
         else:
-            self.logger = create_log(loggerName='YahooStats', loggerFileName=None)
+            self.logger = create_log(loggerName='YahooFinancialStatements', loggerFileName=None)
 
     def _existing_dt(self):
         sql = """

@@ -5,13 +5,16 @@ from configs import database_configs as dbcfg
 from configs import job_configs as jcfg
 from sqlalchemy import create_engine
 from modules.extract_yahoo_price import YahooPrice
+from util.helper_functions import create_log
 
 pd.set_option('mode.chained_assignment', None)
+
+
 # pd.set_option('display.max_columns', None)
 
 
 class CalculateFactors:
-    market = '^GSPC'
+    market = '^GSPC'  # use sp500 as the market index
 
     database_ip = dbcfg.MYSQL_HOST
     database_user = dbcfg.MYSQL_USER
@@ -21,9 +24,10 @@ class CalculateFactors:
 
     workers = jcfg.WORKER
 
-    cnn = create_engine(f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
-                        pool_size=20,
-                        max_overflow=0)
+    cnn = create_engine(
+        f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
+        pool_size=20,
+        max_overflow=0)
 
     sql_quarterly_data = """
                             select a.*
@@ -40,7 +44,7 @@ class CalculateFactors:
                     order by fulldate
                 """
 
-    sql_last_entery = """
+    sql_last_entry = """
                         SELECT max(asOfDate) as asOfDate
                         FROM model_1_factors
                         where ticker='{}'
@@ -70,20 +74,20 @@ class CalculateFactors:
                         """
 
     trailing_factors_list = [
-                                'quarterlyFreeCashFlow',
-                                'quarterlyCashDividendsPaid',
-                                'quarterlyOperatingCashFlow',
-                                'quarterlyTotalRevenue',
-                                'quarterlyNetIncome',
-                                'quarterlyResearchAndDevelopment',
-                                'quarterlySellingGeneralAndAdministration',
-                                'quarterlyBasicEPS',
-                                'quarterlyDilutedEPS'
-                            ]
+        'quarterlyFreeCashFlow',
+        'quarterlyCashDividendsPaid',
+        'quarterlyOperatingCashFlow',
+        'quarterlyTotalRevenue',
+        'quarterlyNetIncome',
+        'quarterlyResearchAndDevelopment',
+        'quarterlySellingGeneralAndAdministration',
+        'quarterlyBasicEPS',
+        'quarterlyDilutedEPS'
+    ]
 
     failed_extract = []
 
-    def __init__(self, stock, start_dt, updated_dt):
+    def __init__(self, stock, start_dt, updated_dt, loggerFileName=None):
 
         # init the input
         self.start_dt = start_dt
@@ -115,7 +119,7 @@ class CalculateFactors:
         self.quarterly_data.drop(columns=['data_id', 'updated_dt'], axis=1, inplace=True)
         self.quarterly_data.set_index('asOfDate', inplace=True)
         # the latest record in weekly_non_price_factors
-        self.last_weekly_entry = pd.read_sql(sql=self.sql_last_entery.format(self.stock), con=self.cnn).iloc[0, 0]
+        self.last_weekly_entry = pd.read_sql(sql=self.sql_last_entry.format(self.stock), con=self.cnn).iloc[0, 0]
 
         # read the Yahoo consensus data
         self.yahoo_consensus = pd.read_sql(sql=self.sql_yahoo_consensus.format(self.stock,
@@ -127,6 +131,13 @@ class CalculateFactors:
                                                           format='%Y-%m-%d',
                                                           errors='ignore')
         self.yahoo_consensus.set_index('asOfDate', inplace=True)
+        self.loggerFileName = loggerFileName
+
+        if self.loggerFileName is not None:
+            self.logger = create_log(loggerName='factor_calc', loggerFileName=self.loggerFileName)
+        else:
+            self.logger = create_log(loggerName='factor_calc', loggerFileName=None)
+
 
     def _add_rolling_sum(self, input_df, input_cols: list, number_of_periods=4):
         # add every 4 quarter data, this function should only be applied to CF and IS items
@@ -517,7 +528,7 @@ class CalculateFactors:
             print(f'{var_out} Error: not all inputs are available = {var1}')
             return pd.DataFrame(index=input_df.index, columns=[var_out])
 
-    def _calculate_volatitliy(self, input_df, period, frequency='D'):
+    def _calculate_volatility(self, input_df, period, frequency='D'):
         stg_df = input_df.sort_index(ascending=True).groupby(input_df.index).first().copy()
         if frequency in ['W', 'M', 'Y']:
             stg_df = self._resample(stg_df, frequency)
@@ -577,7 +588,7 @@ class CalculateFactors:
 
         return final_df
 
-    def calculate_tparev(self, input_df, lag, frequency='D'):
+    def _calculate_tparev(self, input_df, lag, frequency='D'):
         tmp = input_df.sort_index()
         var1 = 'targetMedianPrice'
         output = f'tparv{lag}{frequency}'.lower()
@@ -628,9 +639,9 @@ class CalculateFactors:
         eg8g = self._calculate_egNq(df_from_step1, 8)
         sg12g = self._calculate_sgNq(df_from_step1, 12)
         posttmeg_12qcount = self._calculate_positive_EPS(df_from_step1, period=12, TTM=True)
-        tparev21d = self.calculate_tparev(self.yahoo_consensus, lag=21, frequency='D')
-        tparev63d = self.calculate_tparev(self.yahoo_consensus, lag=63, frequency='D')
-        tparev126d = self.calculate_tparev(self.yahoo_consensus, lag=126, frequency='D')
+        tparev21d = self._calculate_tparev(self.yahoo_consensus, lag=21, frequency='D')
+        tparev63d = self._calculate_tparev(self.yahoo_consensus, lag=63, frequency='D')
+        tparev126d = self._calculate_tparev(self.yahoo_consensus, lag=126, frequency='D')
 
         # calculate price factors
         ram1 = self._calculate_ram(self.price_f, self.market_f, beta='60M', lags=[126, 189, 252], skips=[21],
@@ -640,8 +651,8 @@ class CalculateFactors:
         pcghi12m = self._calculate_max_drawdown(self.price_f, 252)
         pch63d = self._calculate_return(self.price_f, lag=63, skip=0, frequency='D')
         rp10d = self._calculate_rp(self.price_f, period=10, frequency='D')
-        volatility60d = self._calculate_volatitliy(self.price_f, period=60, frequency='D')
-        volatility12m = self._calculate_volatitliy(self.price_f, period=252, frequency='D')
+        volatility60d = self._calculate_volatility(self.price_f, period=60, frequency='D')
+        volatility12m = self._calculate_volatility(self.price_f, period=252, frequency='D')
 
         data_frames2 = [df_with_time_df, rdi, sgi, qsm, fcfta, capacq, roe, roa, eg8g, sg12g, posttmeg_12qcount,
                         tparev21d, tparev63d, tparev126d, ram1, ram2, pcghi12m, pch63d, rp10d, volatility60d,
