@@ -103,11 +103,7 @@ class Finviz:
     def __init__(self, updated_dt, loggerFileName=None):
         self.loggerFileName = loggerFileName
         self.updated_dt = updated_dt
-
-        if self.loggerFileName is not None:
-            self.logger = create_log(loggerName='Finviz', loggerFileName=self.loggerFileName)
-        else:
-            self.logger = create_log(loggerName='Finviz', loggerFileName=None)
+        self.logger = create_log(loggerName='Finviz', loggerFileName=self.loggerFileName)
 
     def _get_header(self):
         user_agent = random.choice(jcfg.UA_LIST)

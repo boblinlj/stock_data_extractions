@@ -86,7 +86,7 @@ class PriceJob:
         if self.batch_run:
             parallel_process(stock_list, self._run_each_stock, self.workers)
         else:
-            non_parallel_process(stock_list, self._run_each_stock, self.workers)
+            parallel_process(stock_list, self._run_each_stock, 1)
 
         self.logger.info(f"-----Start generate SQL outputs-----")
         insert = write_insert_db('price', self.updated_dt)

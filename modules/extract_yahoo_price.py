@@ -40,7 +40,7 @@ class YahooPrice:
         self.end_dt = regular_time_to_unix(end_dt)
         # self.end_dt = 9999999999
         self.interval = interval
-        self.prepost = includePrePost
+        self.includePrePost = includePrePost
         self.loggerFileName = loggerFileName
         self.latest_data_date = pd.read_sql(con=self.cnn, sql=self.sql_max_date.format(self.stock)).iloc[0, 0]
 
@@ -91,7 +91,7 @@ class YahooPrice:
                          start=self.start_dt,
                          end=self.end_dt,
                          interval=self.interval,
-                         prepost=self.prepost)
+                         prepost=self.includePrePost)
 
         response = self._get_response(url)
 
@@ -126,10 +126,9 @@ class YahooPrice:
                          start=self.start_dt,
                          end=self.end_dt,
                          interval=self.interval,
-                         prepost=self.prepost)
+                         prepost=self.includePrePost)
 
         response = self._get_response(url)
-        # self.logger.info(url)
         if response.status_code == 200:
             js = json.loads(response.text)
             try:
@@ -188,12 +187,11 @@ class YahooPrice:
             output_df.fillna(method='ffill', inplace=True)
 
             return output_df.iloc[output_df.index > pd.to_datetime(self.latest_data_date)]
-            # return output_df
+
         else:
             self.logger.debug(f"{self.stock} response error {response.status_code}")
             return pd.DataFrame()
 
 
 if __name__ == '__main__':
-    obj = YahooPrice('CREE', start_dt=datetime.date(2000, 1, 1), end_dt=datetime.date(2021, 12, 25))
-    print(obj.get_detailed_stock_price())
+    pass

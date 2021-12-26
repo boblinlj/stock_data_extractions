@@ -2,12 +2,14 @@ from configs import database_configs as dbcfg
 from configs import job_configs as jcfg
 from util.helper_functions import create_log
 from util.parallel_process import parallel_process
-from util.parallel_process import non_parallel_process
 from modules.extract_factors import CalculateFactors
 from sqlalchemy import create_engine
-from datetime import date
+from datetime import date, timedelta
 import pandas as pd
 import time
+import os
+from util.gcp_functions import upload_to_bucket
+from util.create_output_sqls import write_insert_db
 
 
 class FactorJob:
@@ -19,9 +21,10 @@ class FactorJob:
 
     workers = jcfg.WORKER
 
-    cnn = create_engine(f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
-                        pool_size=20,
-                        max_overflow=0)
+    cnn = create_engine(
+        f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
+        pool_size=20,
+        max_overflow=0)
 
     sql = """
             with pop as (
@@ -39,7 +42,7 @@ class FactorJob:
 
     no_of_db_entries = 0
 
-    def __init__(self, start_dt, updated_dt, batch_run=False, loggerFileName=None):
+    def __init__(self, start_dt, updated_dt, batch_run=True, loggerFileName=None):
         # init the input
         self.updated_dt = updated_dt
         self.stock_list_df = pd.read_sql(con=self.cnn, sql=self.sql.format(self.updated_dt))
@@ -75,9 +78,33 @@ class FactorJob:
         start = time.time()
         stock_list = self.stock_list_df['ticker'].to_list()[:]
         self.logger.info(f'There are {len(stock_list)} stocks to be extracted')
-        if self.batch_run:
-            parallel_process(stock_list, self._run_each_stock, self.workers)
+        # for stock in stock_list:
+        #     self._run_each_stock(stock)
+        # if self.batch_run:
+        #     parallel_process(stock_list, self._run_each_stock, self.workers)
+        # else:
+        #     parallel_process(stock_list, self._run_each_stock, 1)
+
+        # self.logger.info(f"-----Start generate SQL outputs-----")
+        # insert = write_insert_db('model_1_factors', self.updated_dt)
+        # insert.run_insert()
+
+        self.logger.info(f"-----Upload SQL outputs to GCP-----")
+        file = f'insert_model_1_factors_{self.updated_dt}.sql'
+        if upload_to_bucket(file, os.path.join(jcfg.JOB_ROOT, "sql_outputs", file), 'stock_data_busket2'):
+            self.logger.info("GCP upload successful for file = {}".format(file))
         else:
-            non_parallel_process(stock_list, self._run_each_stock, self.workers)
+            self.logger.debug("Failed: GCP upload failed for file = {}".format(file))
+
         end = time.time()
         self.logger.info("Extraction took {} minutes".format(round((end - start) / 60)))
+
+
+if __name__ == '__main__':
+    loggerFileName = f"weekly_model_1_factor_{date.today().strftime('%Y%m%d')}.log"
+
+    obj = FactorJob(date(2010, 1, 1),
+                    date.today(),
+                    batch_run=True,
+                    loggerFileName=loggerFileName)
+    obj.run_job()

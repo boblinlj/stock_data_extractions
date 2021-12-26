@@ -85,7 +85,7 @@ class CalculateFactors:
 
     failed_extract = []
 
-    def __init__(self, stock, start_dt, updated_dt, loggerFileName=None):
+    def __init__(self, stock, start_dt, updated_dt, loggerFileName):
 
         # init the input
         self.start_dt = start_dt
@@ -130,7 +130,7 @@ class CalculateFactors:
                                                           errors='ignore')
         self.yahoo_consensus.set_index('asOfDate', inplace=True)
         self.loggerFileName = loggerFileName
-        self.logger = create_log(loggerName='factor_calc', loggerFileName=self.loggerFileName)
+        self.logger = create_log(loggerName='factors', loggerFileName=self.loggerFileName)
 
     def _add_rolling_sum(self, input_df, input_cols: list, number_of_periods=4):
         # add every 4 quarter data, this function should only be applied to CF and IS items
@@ -676,7 +676,7 @@ class CalculateFactors:
         df_final = df_final.loc[df_final['dayofweek'] == 6]
         # only select ones that are not in database
 
-        # df_final = df_final[df_final.index > pd.to_datetime(self.last_weekly_entry)]
+        df_final = df_final[df_final.index > pd.to_datetime(self.last_weekly_entry)]
 
         df_final.drop(columns=['dayofweek'], inplace=True)
 
@@ -693,6 +693,9 @@ class CalculateFactors:
 
 
 if __name__ == '__main__':
-    obj = CalculateFactors('USCR', date(2010, 1, 1), date.today())
-    df = obj.run_pipeline()
-    print(df.tail())
+    # loggerFileName = f"daily_yahoo_price_{date.today().strftime('%Y%m%d')}.log"
+    # obj = CalculateFactors('AAPL', date(2010, 1, 1), date.today())
+    # df = obj.run_pipeline()
+    # print(df.tail())
+
+    pass
