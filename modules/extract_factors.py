@@ -8,8 +8,6 @@ from modules.extract_yahoo_price import YahooPrice
 from util.helper_functions import create_log
 
 pd.set_option('mode.chained_assignment', None)
-
-
 # pd.set_option('display.max_columns', None)
 
 
@@ -132,12 +130,7 @@ class CalculateFactors:
                                                           errors='ignore')
         self.yahoo_consensus.set_index('asOfDate', inplace=True)
         self.loggerFileName = loggerFileName
-
-        if self.loggerFileName is not None:
-            self.logger = create_log(loggerName='factor_calc', loggerFileName=self.loggerFileName)
-        else:
-            self.logger = create_log(loggerName='factor_calc', loggerFileName=None)
-
+        self.logger = create_log(loggerName='factor_calc', loggerFileName=self.loggerFileName)
 
     def _add_rolling_sum(self, input_df, input_cols: list, number_of_periods=4):
         # add every 4 quarter data, this function should only be applied to CF and IS items
@@ -661,7 +654,6 @@ class CalculateFactors:
         df_final = pd.concat(data_frames2, axis=1)
 
         df_final.fillna(method='ffill', inplace=True)
-
         # ****************************************END: STEP TWO*****************************************************
 
         # ****************************************STEP TREE*********************************************************

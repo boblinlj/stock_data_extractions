@@ -71,6 +71,7 @@ class YahooFinancial:
                 from financial.yahoo_trailing_fundamental a
                 order by ticker, type, asOfDate
                 """
+        
         self.ext_list_data = pd.read_sql(sql=sql, con=self.cnn)
 
     def _get_header(self):
