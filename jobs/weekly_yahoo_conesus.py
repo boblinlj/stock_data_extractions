@@ -12,7 +12,7 @@ import time
 from datetime import date
 
 
-class FactorJob:
+class AnalysisJob:
     database_ip = dbcfg.MYSQL_HOST
     database_user = dbcfg.MYSQL_USER
     database_pw = dbcfg.MYSQL_PASSWORD
@@ -27,18 +27,25 @@ class FactorJob:
         max_overflow=0)
 
     sql = """
+            with pop as (
             SELECT ticker
-            FROM financial.finviz_tickers
-            
-            UNION
-            
-            SELECT yahoo_ticker as ticker
+            FROM finviz_tickers
+            where updated_dt = '{}' 
+            union
+            select yahoo_ticker as ticker
             FROM stock_list_for_cooble_stone
-            WHERE active_ind='A'
-            ORDER BY ticker
+            where active_ind='A'
+            order by ticker)
+            
+            select distinct a.ticker 
+            from pop a
+            left join yahoo_consensus b
+                on a.ticker = b.ticker
+            where b.ticker is null
         """
 
     no_of_db_entries = 0
+    failed_extraction = []
 
     def __init__(self, updated_dt, batch_run=True, loggerFileName=None):
         # init the input
@@ -50,12 +57,11 @@ class FactorJob:
 
     def _run_each_stock(self, stock):
         self.logger.info(f"Start Processing stock = {stock}")
-        each_stock = YahooAnalysis(stock, loggerFileName)
-        stock_df = each_stock.get_analysis_data()
-        stock_df['updated_dt'] = self.updated_dt
+        stock_df = YahooAnalysis(stock, loggerFileName).get_analysis_data()
         if stock_df.empty:
             self.logger.debug(f"Failed:Processing stock = {stock} due to the dataframe is empty")
         else:
+            stock_df['updated_dt'] = self.updated_dt
             if self._enter_db(stock_df, 'yahoo_consensus'):
                 self.logger.info(f"Success: Entered stock = {stock}")
             else:
@@ -72,11 +78,12 @@ class FactorJob:
     def run_job(self):
         start = time.time()
         stock_list = self.stock_list_df['ticker'].to_list()[:]
+        # print(stock_list)
         self.logger.info(f'There are {len(stock_list)} stocks to be extracted')
         if self.batch_run:
-            parallel_process(stock_list, self._run_each_stock, self.workers)
+            parallel_process(stock_list, self._run_each_stock, n_jobs=self.workers)
         else:
-            parallel_process(stock_list, self._run_each_stock, 1)
+            parallel_process(stock_list, self._run_each_stock, n_jobs=1)
 
         self.logger.info(f"-----Start generate SQL outputs-----")
         insert = write_insert_db('yahoo_analysis', self.updated_dt)
@@ -96,7 +103,7 @@ class FactorJob:
 if __name__ == '__main__':
     loggerFileName = f"weekly_yahoo_conesus_{date.today().strftime('%Y%m%d')}.log"
 
-    obj = FactorJob(date(2021, 12, 24),
-                    batch_run=True,
-                    loggerFileName=loggerFileName)
+    obj = AnalysisJob(date(2021, 12, 24),
+                      batch_run=True,
+                      loggerFileName=loggerFileName)
     obj.run_job()

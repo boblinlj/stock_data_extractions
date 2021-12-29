@@ -1,7 +1,11 @@
 import datetime
 import logging
 import os
+
+import numpy as np
+
 from configs import job_configs as jcfg
+import math
 
 
 def dedup_list(ls: list):
@@ -13,11 +17,17 @@ def returnNotMatches(a, b):
 
 
 def regular_time_to_unix(date):
-    return int((date - datetime.date(1970, 1, 1)).total_seconds())
+    if math.isnan(date):
+        return np.nan
+    else:
+        return int((date - datetime.date(1970, 1, 1)).total_seconds())
 
 
 def unix_to_regular_time(unix: int):
-    return datetime.datetime.utcfromtimestamp(unix).strftime('%Y-%m-%d')
+    if math.isnan(unix):
+        return np.nan
+    else:
+        return datetime.datetime.utcfromtimestamp(unix).strftime('%Y-%m-%d')
 
 
 def create_log(loggerName, loggerFileName=None):

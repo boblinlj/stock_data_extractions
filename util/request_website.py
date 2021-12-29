@@ -76,8 +76,8 @@ class GetWebsite:
         except AttributeError as err:
             # self.logger.debug("Unable to find JSON for stock = {}".format(stock))
             # print(err)
-            raise AttributeError
-            # return None
+            # raise AttributeError
+            return None
 
     def get_json(self):
         return self._parse_html_for_json()

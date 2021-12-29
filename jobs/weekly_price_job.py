@@ -80,7 +80,7 @@ class PriceJob:
     def run_job(self):
         start = time.time()
         stock_list = self.stock_list_df['ticker'].to_list()[:]
-        # stock_list = ['XEC']
+
         self.logger.info(f'There are {len(stock_list)} stocks to be extracted')
 
         if self.batch_run:

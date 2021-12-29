@@ -15,7 +15,10 @@ from util.get_stock_population import StockPopulation
 import logging
 
 import time
-from util.helper_functions import *
+from util.helper_functions import create_log
+from util.helper_functions import unix_to_regular_time
+from util.helper_functions import dedup_list
+from util.helper_functions import returnNotMatches
 from util.parallel_process import *
 
 
@@ -45,11 +48,7 @@ class YahooStats:
         self.loggerFileName = loggerFileName
         self.updated_dt = updated_dt
         self.batch = batch
-
-        if self.loggerFileName is not None:
-            self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
-        else:
-            self.logger = create_log(loggerName='YahooStats', loggerFileName=None)
+        self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
 
     def _get_header(self):
         user_agent = random.choice(jcfg.UA_LIST)
@@ -225,10 +224,10 @@ class YahooStats:
             self.failed_extract.append(stock)
 
         # enter yahoo consensus table
-        if self._enter_db(df_1[ycfg.YAHOO_CONSENSUS_COLUMNS], 'yahoo_consensus'):
-            self.logger.info("yahoo_consensus: Yahoo consensus data entered successfully for stock = {}".format(stock))
+        if self._enter_db(df_1[ycfg.YAHOO_CONSENSUS_COLUMNS], 'yahoo_consensus_price'):
+            self.logger.info("yahoo_consensus_price: Yahoo consensus data entered successfully for stock = {}".format(stock))
         else:
-            self.logger.info("yahoo_consensus: Yahoo consensus data entered failed for stock = {}".format(stock))
+            self.logger.info("yahoo_consensus_price: Yahoo consensus data entered failed for stock = {}".format(stock))
             self.failed_extract.append(stock)
 
         return None
@@ -246,27 +245,27 @@ class YahooStats:
         existing_rec = self._check_entries_stat()
         stocks = returnNotMatches(stocks, existing_rec + jcfg.BLOCK)
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
         else:
-            non_parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info("-------------First Extract Ends-------------")
 
         self.logger.info("-------------Second Extract Starts-------------")
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
         else:
-            non_parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info("-------------Second Extract Ends-------------")
 
         self.logger.info("-------------Third Extract Starts-------------")
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
         else:
-            non_parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info("-------------Third Extract Ends-------------")
 
         end = time.time()
@@ -275,5 +274,5 @@ class YahooStats:
 
 
 if __name__ == '__main__':
-    spider = YahooStats(datetime.datetime.today().date(), batch=False, loggerFileName=None)
+    spider = YahooStats(datetime.datetime.today().date(), batch=True, loggerFileName=None)
     spider.run()

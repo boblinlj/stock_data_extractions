@@ -16,11 +16,10 @@ class YahooAnalysis:
         self.logger = create_log(loggerName='yahoo_analysis', loggerFileName=self.loggerFileName)
 
     def get_analysis_data(self):
-        try:
-            data = self.request(self.url.format(ticker=self.stock), True).get_json()
-        except AttributeError as e:
-            self.logger.debug(f"Unable to find JSON for stock = {self.stock}")
+        data = self.request(self.url.format(ticker=self.stock), True).get_json()
+        if data is None:
             return pd.DataFrame()
+
         period_lst = {'0q': 'thisQ',
                       '+1q': 'next1Q',
                       '0y': 'thisFY',
