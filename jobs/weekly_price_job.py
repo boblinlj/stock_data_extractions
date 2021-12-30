@@ -1,7 +1,6 @@
 from configs import database_configs as dbcfg
 from configs import job_configs as jcfg
 from util.parallel_process import parallel_process
-from util.parallel_process import non_parallel_process
 from util.helper_functions import create_log
 from util.create_output_sqls import write_insert_db
 from util.gcp_functions import upload_to_bucket
