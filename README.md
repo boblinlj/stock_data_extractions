@@ -24,7 +24,7 @@ project
 │   │   extract_yahoo_financial.py  : logics to extract Yahoo financial statements
 │   │   extract_finviz_data : logics to extract data from Finviz.com
 │   │   extract_factors.py  : logics to calcaute factors
-│   │   
+│   │   extract_analysis.py
 │
 └───util
 │   │   create_output_sqls.py   : create sql files for GCP uploads
@@ -39,7 +39,10 @@ project
 └───jobs
 │   │   daily_extractions.py    : daily extraction
 │   │   financial_statement.py  : financial statement extraction - weekly
-│   │  
+│   │   weekly_factor_job.py
+|   |   weekly_yahoo_conesus.py
+|   |   weekly_price_job.py
+|   |
 │
 └───logs
 │   │   this folder will store job logs

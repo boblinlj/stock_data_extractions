@@ -78,16 +78,16 @@ class FactorJob:
         start = time.time()
         stock_list = self.stock_list_df['ticker'].to_list()[:]
         self.logger.info(f'There are {len(stock_list)} stocks to be extracted')
-        # for stock in stock_list:
-        #     self._run_each_stock(stock)
-        # if self.batch_run:
-        #     parallel_process(stock_list, self._run_each_stock, self.workers)
-        # else:
-        #     parallel_process(stock_list, self._run_each_stock, 1)
+        for stock in stock_list:
+            self._run_each_stock(stock)
+        if self.batch_run:
+            parallel_process(stock_list, self._run_each_stock, self.workers)
+        else:
+            parallel_process(stock_list, self._run_each_stock, 1)
 
-        # self.logger.info(f"-----Start generate SQL outputs-----")
-        # insert = write_insert_db('model_1_factors', self.updated_dt)
-        # insert.run_insert()
+        self.logger.info(f"-----Start generate SQL outputs-----")
+        insert = write_insert_db('model_1_factors', self.updated_dt)
+        insert.run_insert()
 
         self.logger.info(f"-----Upload SQL outputs to GCP-----")
         file = f'insert_model_1_factors_{self.updated_dt}.sql'
