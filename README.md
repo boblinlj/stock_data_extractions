@@ -3,7 +3,12 @@
 ```
 project
 │   │   README.md
-│   │
+│   │   daily_extractions.py    : daily extraction
+│   │   financial_statement.py  : financial statement extraction - weekly
+│   │   weekly_factor_job.py
+|   |   weekly_yahoo_conesus.py
+|   |   weekly_price_job.py
+|   |
 │
 └───configs
 │   │   database_configs.py : database configrations
@@ -35,14 +40,6 @@ project
 │   │   parallel_process.py     : multiprocessing modules
 │   │   price_factors.py        : calcualte price factor
 │   │
-│
-└───jobs
-│   │   daily_extractions.py    : daily extraction
-│   │   financial_statement.py  : financial statement extraction - weekly
-│   │   weekly_factor_job.py
-|   |   weekly_yahoo_conesus.py
-|   |   weekly_price_job.py
-|   |
 │
 └───logs
 │   │   this folder will store job logs
