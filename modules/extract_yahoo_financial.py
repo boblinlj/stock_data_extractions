@@ -53,11 +53,7 @@ class YahooFinancial:
         self.updated_dt = updated_dt
         self.loggerFileName = loggerFileName
         self.batch = batch
-
-        if self.loggerFileName is not None:
-            self.logger = create_log(loggerName='YahooFinancialStatements', loggerFileName=self.loggerFileName)
-        else:
-            self.logger = create_log(loggerName='YahooFinancialStatements', loggerFileName=None)
+        self.logger = create_log(loggerName='YahooFinancialStatements', loggerFileName=self.loggerFileName)
 
     def _existing_dt(self):
         sql = """
@@ -253,27 +249,27 @@ class YahooFinancial:
         stocks = self._get_stock_list() + self._get_stock_list_from_arron()
         self.logger.info("{} Stocks to be extracted".format(len(stocks)))
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
         else:
-            non_parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info(self.failed_extract)
 
         self.logger.info("-------------Second Extract Starts-------------")
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
         else:
-            non_parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info(self.failed_extract)
 
         self.logger.info("-------------Third Extract Starts-------------")
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
         else:
-            non_parallel_process(stocks, self._extract_each_stock)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info(self.failed_extract)
 
         end = time.time()
