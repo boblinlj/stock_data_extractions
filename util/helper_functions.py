@@ -30,7 +30,7 @@ def unix_to_regular_time(unix: int):
         return datetime.datetime.utcfromtimestamp(unix).strftime('%Y-%m-%d')
 
 
-def create_log(loggerName, loggerFileName=None):
+def create_log(loggerName=__name__, loggerFileName=None):
     logger = logging.getLogger(loggerName)
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter(jcfg.LOG_FORMATTER)

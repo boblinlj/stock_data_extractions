@@ -184,8 +184,8 @@ class YahooStats:
     def _check_entries_stat(self):
         sql = f"""SELECT distinct ticker 
                   FROM yahoo_fundamental a 
-                  WHERE a.updated_dt = '{self.updated_dt}' """
-
+                  WHERE a.updated_dt = '{self.updated_dt}' 
+                """
         df = pd.read_sql(con=self.cnn, sql=sql)
 
         return df.ticker.to_list()

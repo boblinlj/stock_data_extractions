@@ -7,10 +7,9 @@ from configs import job_configs as jcfg
 import os
 from util.helper_functions import create_log
 
-loggerFileName = f"yahoo_stats_{datetime.date.today().strftime('%Y%m%d')}.log"
+loggerFileName = f"daily_job_{datetime.date.today().strftime('%Y%m%d')}.log"
 
-create_log(loggerName='daily_job',
-           loggerFileName=loggerFileName)
+create_log(loggerName='daily_job', loggerFileName=loggerFileName)
 
 # runtime = datetime.datetime.today().date() - datetime.timedelta(days = 3)
 runtime = datetime.datetime.today().date()
@@ -25,25 +24,19 @@ spider2 = YahooStats(runtime, batch=True, loggerFileName=loggerFileName)
 spider2.run()
 print("*" * 30)
 
+outputs = ['finviz_screener', 'finviz_tickers', 'yahoo_fundamental', 'yahoo_price', 'yahoo_consensus_price']
 # generate sql script for upload
 print("Start to generating output files")
-print("*" * 20)
-insert = write_insert_db('finviz_screener', runtime)
-insert.run_insert()
-insert = write_insert_db('finviz_tickers', runtime)
-insert.run_insert()
-insert = write_insert_db('yahoo_fundamental', runtime)
-insert.run_insert()
-update = write_insert_db('yahoo_price', runtime)
-update.run_insert()
-update = write_insert_db('yahoo_consensus_price', runtime)
-update.run_insert()
+print("*" * 30)
+for sql_out in outputs:
+    write_insert_db(sql_out, runtime).run_insert()
+
 
 print("Start Uploading Files to GCP")
-items = os.listdir(os.path.join(jcfg.JOB_ROOT, "sql_outputs"))
+# items = os.listdir(os.path.join(jcfg.JOB_ROOT, "sql_outputs"))
+items = [f'insert_{file}_{runtime}' for file in outputs]
 for each_item in items:
-    if each_item.endswith("{}.sql".format(runtime)):
-        if upload_to_bucket(each_item, os.path.join(jcfg.JOB_ROOT, "sql_outputs", each_item), 'stock_data_busket2'):
-            print("GCP upload successful for file = {}".format(each_item))
-        else:
-            print("!!!!!!!!!GCP upload failed for file = {}".format(each_item))
+    if upload_to_bucket(each_item, os.path.join(jcfg.JOB_ROOT, "sql_outputs", each_item), 'stock_data_busket2'):
+        print("Successful: GCP upload successful for file = {}".format(each_item))
+    else:
+        print("Failed: GCP upload failed for file = {}".format(each_item))

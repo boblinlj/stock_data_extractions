@@ -58,15 +58,15 @@ class StockPopulation:
         return df.yahoo_ticker.to_list()
 
     def all_stocks_wo_ETF_RIET(self):
-        pop1 = self._get_stock_list()
-        pop2 = self._get_stock_list_from_arron()
+        pop1 = self.get_stock_list()
+        pop2 = self.get_stock_list_from_arron()
 
         return list(set(pop1+pop2))
 
     def all_stock(self):
-        pop1 = self._get_stock_list()
-        pop2 = self._get_stock_list_from_arron()
-        pop3 = self._get_ETF_list()
-        pop4 = self._get_REIT_list()
+        pop1 = self.get_stock_list()
+        pop2 = self.get_stock_list_from_arron()
+        pop3 = self.get_ETF_list()
+        pop4 = self.get_REIT_list()
 
         return list(set(pop1 + pop2 + pop3 + pop4))

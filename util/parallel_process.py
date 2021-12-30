@@ -30,15 +30,19 @@ def parallel_process(array, function, n_jobs=jcfg.WORKER, use_kwargs=False, fron
         # Pass the elements of array into function
         if use_kwargs:
             futures = [pool.submit(function, **a) for a in array[front_num:]]
+            # futures = {pool.submit(function, **a) for a in array[front_num:]}
         else:
-            futures = [pool.submit(function, a) for a in array[front_num:]]
+            # futures = [pool.submit(function, a) for a in array[front_num:]]
+            futures = {pool.submit(function, a): a for a in array[front_num:]}
+
+        # print(futures)
         kwargs = {
-                    'total': len(futures),
-                    'unit': 'it',
-                    'unit_scale': True,
-                    'leave': True,
-                    'ncols': 80
-                }
+            'total': len(futures),
+            'unit': 'it',
+            'unit_scale': True,
+            'leave': True,
+            'ncols': 80
+        }
         # Print out the progress as tasks complete
         for f in tqdm(concurrent.futures.as_completed(futures), **kwargs):
             pass
