@@ -31,7 +31,6 @@ print("*" * 30)
 for sql_out in outputs:
     write_insert_db(sql_out, runtime).run_insert()
 
-
 print("Start Uploading Files to GCP")
 # items = os.listdir(os.path.join(jcfg.JOB_ROOT, "sql_outputs"))
 items = [f'insert_{file}_{runtime}.sql' for file in outputs]
