@@ -5,6 +5,12 @@ from configs import prox_configs as pcfg
 import json
 from bs4 import BeautifulSoup
 import re
+import pandas as pd
+import numpy as np
+
+
+class WebParseError(Exception):
+    pass
 
 
 class GetWebsite:
@@ -13,71 +19,114 @@ class GetWebsite:
         self.url = url
         self.proxy = proxy
 
-    def _get_header(self):
-        user_agent = random.choice(jcfg.UA_LIST)
-        headers = {
-            'user-agent': user_agent,
-            'Accept-Language': 'en-GB,en;q=0.9,en-US;q=0.8,zh-CN;q=0.7,zh;q=0.6,zh-TW;q=0.5',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'Sec-Fetch-Dest': 'iframe',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'cross-site',
-            'origin': 'https://google.com'
-        }
-        return headers
-
     def _get_session(self):
         session = requests.session()
         if self.proxy:
             session.proxies = {'http': 'socks5://{}:{}'.format(pcfg.PROXY_URL, pcfg.PROXY_PROT),
                                'https': 'socks5://{}:{}'.format(pcfg.PROXY_URL, pcfg.PROXY_PROT)}
-        session.headers = self._get_header()
-
+        session.headers = {
+                            'user-agent': random.choice(jcfg.UA_LIST),
+                            'Accept-Language': 'en-GB,en;q=0.9,en-US;q=0.8,zh-CN;q=0.7,zh;q=0.6,zh-TW;q=0.5',
+                            'Cache-Control': 'no-cache',
+                            'Connection': 'keep-alive',
+                            'Sec-Fetch-Dest': 'iframe',
+                            'Sec-Fetch-Mode': 'navigate',
+                            'Sec-Fetch-Site': 'cross-site',
+                            'origin': 'https://google.com'
+                        }
         return session
 
     def _get_response(self):
         session = self._get_session()
         try:
             response = session.get(self.url, allow_redirects=False)
+            return response
         except requests.exceptions.ConnectTimeout:
-            # try once more
             response = session.get(self.url, allow_redirects=False)
-        except requests.exceptions.HTTPError:
-            return None
-        except requests.exceptions.RequestException:
-            return None
+            return response
+        except requests.exceptions.HTTPError as e:
+            raise WebParseError(f'unable to parse url = {self.url} due to {e}')
+        except requests.exceptions.RequestException as e:
+            raise WebParseError(f'unable to parse url = {self.url} due to {e}')
+        except Exception:
+            raise WebParseError(f'unable to parse url = {self.url}')
 
-        return response
+    def response(self):
+        return self._get_response()
 
-    def _get_json_data_from_html(self):
-        response = self._get_response()
-        if response is not None:
+
+class YahooWebParser:
+    def __init__(self, url, proxy=True):
+        self.url = url
+        self.proxy = proxy
+        self.response = GetWebsite(self.url).response()
+
+    def _parse_html_for_json(self):
+        if self.response is None:
+            return None
+        elif self.response.status_code == 200:
+            soup = BeautifulSoup(self.response.text, 'html.parser')
+            pattern = re.compile(r'\s--\sData\s--\s')
             try:
-                data = json.loads(response.text)
-                return data
-            except Exception as e:
-                return None
+                script_data = soup.find('script', text=pattern).contents[0]
+                start = script_data.find("context") - 2
+                if start >= 0:
+                    json_data = json.loads(script_data[start:-12])
+                else:
+                    json_data = None
+                return json_data
+            except AttributeError:
+                raise AttributeError
         else:
             return None
 
-    def _parse_html_for_json(self):
-        response = self._get_response()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        pattern = re.compile(r'\s--\sData\s--\s')
-        try:
-            script_data = soup.find('script', text=pattern).contents[0]
-            start = script_data.find("context") - 2
-            if start >= 0:
-                json_data = json.loads(script_data[start:-12])
-            else:
-                json_data = None
-            return json_data
-        except AttributeError as err:
-            # self.logger.debug("Unable to find JSON for stock = {}".format(stock))
-            # print(err)
-            # raise AttributeError
+    def parse(self):
+        return self._parse_html_for_json()
+
+
+class YahooAPIParser:
+    def __init__(self, url, proxy=True):
+        self.url = url
+        self.proxy = proxy
+        self.response = GetWebsite(self.url).response()
+
+    def _parse_for_json(self):
+        if self.response is not None:
+            return None
+        elif self.response.status_code == 200:
+            return json.loads(self.response.text)
+        else:
             return None
 
-    def get_json(self):
-        return self._parse_html_for_json()
+    def parse(self):
+        return self._parse_for_json()
+
+
+class FinvizParserPerPage:
+    def __init__(self, url, proxy=True):
+        self.url = url
+        self.proxy = proxy
+        self.response = GetWebsite(self.url).response()
+
+    def parse_for_df(self):
+        df = pd.read_html(self.response.text)[7]
+
+        if df.shape[1] == 70:
+            df.columns = df.iloc[0]
+            df = df.iloc[1:]
+            df.replace(to_replace='-', value=np.NaN, inplace=True)
+            return df
+        else:
+            return pd.DataFrame()
+
+    @property
+    def no_of_population(self):
+        df = pd.read_html(self.response.text)[6]
+
+        if df.shape[0] == 1:
+            return int(df[0][0].split(' ')[1])
+        else:
+            return None
+
+    def parse(self):
+        return self.parse_for_df()

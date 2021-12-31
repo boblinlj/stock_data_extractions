@@ -1,20 +1,20 @@
 from configs import database_configs as dbcfg
 from configs import job_configs as jcfg
-from util.helper_functions import create_log
 from util.parallel_process import parallel_process
-from modules.extract_factors import CalculateFactors
+from util.helper_functions import create_log
+from util.create_output_sqls import write_insert_db
+from util.gcp_functions import upload_to_bucket
+from modules.extract_yahoo_price import YahooPrice
 from sqlalchemy import create_engine
 from datetime import date, timedelta
 import pandas as pd
 import time
 import os
-from util.gcp_functions import upload_to_bucket
-from util.create_output_sqls import write_insert_db
 
 
-class FactorJob:
-    database_ip = dbcfg.MYSQL_HOST
+class PriceJob:
     database_user = dbcfg.MYSQL_USER
+    database_ip = dbcfg.MYSQL_HOST
     database_pw = dbcfg.MYSQL_PASSWORD
     database_port = dbcfg.MYSQL_PORT
     database_nm = dbcfg.MYSQL_DATABASE
@@ -26,42 +26,44 @@ class FactorJob:
         pool_size=20,
         max_overflow=0)
 
-    sql = """
-            with pop as (
-                select distinct ticker
-                from model_1_factors
-                where updated_dt='{}'
-            )
-                SELECT DISTINCT a.yahoo_ticker as ticker
-                FROM stock_list_for_cooble_stone a
-                left join pop b
-                    on a.ticker = b.ticker
-                WHERE active_ind='A' and b.ticker is null
-                ORDER BY 1
+    sql_stock_list = """
+            SELECT DISTINCT yahoo_ticker as ticker
+            FROM stock_list_for_cooble_stone 
+            WHERE active_ind='A'
+            ORDER BY 1
         """
 
     no_of_db_entries = 0
 
-    def __init__(self, start_dt, updated_dt, batch_run=True, loggerFileName=None):
+    def __init__(self, start_dt, updated_dt, batch_run=False, loggerFileName=None):
         # init the input
         self.updated_dt = updated_dt
-        self.stock_list_df = pd.read_sql(con=self.cnn, sql=self.sql.format(self.updated_dt))
         self.start_dt = start_dt
         self.batch_run = batch_run
         self.loggerFileName = loggerFileName
-        self.logger = create_log(loggerName='factor_calc', loggerFileName=self.loggerFileName)
+
+        self.stock_list_df = pd.read_sql(con=self.cnn, sql=self.sql_stock_list)
+
+        if self.loggerFileName is not None:
+            self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
+        else:
+            self.logger = create_log(loggerName='YahooStats', loggerFileName=None)
 
     def _run_each_stock(self, stock):
         self.logger.info(f"Start Processing stock = {stock}")
-        each_stock = CalculateFactors(stock,
-                                      start_dt=self.start_dt,
-                                      updated_dt=self.updated_dt,
-                                      loggerFileName=self.loggerFileName)
-        stock_df = each_stock.run_pipeline()
+        each_stock = YahooPrice(stock=stock,
+                                start_dt=self.start_dt,
+                                end_dt=self.updated_dt,
+                                interval='1d',
+                                includePrePost='false',
+                                loggerFileName=self.loggerFileName)
+
+        stock_df = each_stock.get_detailed_stock_price()
+        stock_df['updated_dt'] = self.updated_dt
         if stock_df.empty:
-            self.logger.debug(f"Failed:Processing stock = {stock} due to the dataframe is empty")
+            self.logger.debug(f"Failed:Processing stock = {stock}")
         else:
-            if self._enter_db(stock_df, 'model_1_factors'):
+            if self._enter_db(stock_df, 'price'):
                 self.logger.info(f"Success: Entered stock = {stock}")
             else:
                 self.logger.debug(f"Failed: Entering stock = {stock}")
@@ -77,21 +79,21 @@ class FactorJob:
     def run_job(self):
         start = time.time()
         stock_list = self.stock_list_df['ticker'].to_list()[:]
+
         self.logger.info(f'There are {len(stock_list)} stocks to be extracted')
-        for stock in stock_list:
-            self._run_each_stock(stock)
+
         if self.batch_run:
             parallel_process(stock_list, self._run_each_stock, self.workers)
         else:
             parallel_process(stock_list, self._run_each_stock, 1)
 
         self.logger.info(f"-----Start generate SQL outputs-----")
-        insert = write_insert_db('model_1_factors', self.updated_dt)
+        insert = write_insert_db('price', self.updated_dt)
         insert.run_insert()
 
         self.logger.info(f"-----Upload SQL outputs to GCP-----")
-        file = f'insert_model_1_factors_{self.updated_dt}.sql'
-        if upload_to_bucket(file, os.path.join(jcfg.JOB_ROOT, "sql_outputs", file), 'stock_data_busket2'):
+        file = f'insert_price_{self.updated_dt}.sql'
+        if upload_to_bucket(file, os.path.join(jcfg.JOB_ROOT, "../sql_outputs", file), 'stock_data_busket2'):
             self.logger.info("GCP upload successful for file = {}".format(file))
         else:
             self.logger.debug("Failed: GCP upload failed for file = {}".format(file))
@@ -101,10 +103,11 @@ class FactorJob:
 
 
 if __name__ == '__main__':
-    loggerFileName = f"weekly_model_1_factor_{date.today().strftime('%Y%m%d')}.log"
+    loggerFileName = f"daily_yahoo_price_{date.today().strftime('%Y%m%d')}.log"
 
-    obj = FactorJob(date(2010, 1, 1),
-                    date.today(),
-                    batch_run=True,
-                    loggerFileName=loggerFileName)
+    obj = PriceJob(start_dt=date.today() - timedelta(days=500),
+                   updated_dt=date.today(),
+                   batch_run=True,
+                   loggerFileName=loggerFileName)
     obj.run_job()
+
