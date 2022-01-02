@@ -6,13 +6,12 @@ from util.helper_functions import create_log
 from configs import job_configs as jcfg
 import os
 
-loggerFileName = f"yahoo_stats_{datetime.date.today().strftime('%Y%m%d')}.log"
+loggerFileName = f"yahoo_financial_statements_{datetime.date.today().strftime('%Y%m%d')}.log"
 
 create_log(loggerName='financial_statement_job',
            loggerFileName=loggerFileName)
 
 runtime = datetime.datetime.today().date()
-# runtime = '2021-11-12'
 
 print("Extracting Financial Statements")
 spider3 = YahooFinancial(updated_dt=runtime, batch=True, loggerFileName=loggerFileName)
@@ -24,7 +23,6 @@ for sql_out in outputs:
 
 
 print("Start Uploading Files to GCP")
-# items = os.listdir(os.path.join(jcfg.JOB_ROOT, "sql_outputs"))
 items = [f'insert_{file}_{runtime}.sql' for file in outputs]
 for each_item in items:
     if upload_to_bucket(each_item, os.path.join(jcfg.JOB_ROOT, "../sql_outputs", each_item), 'stock_data_busket2'):

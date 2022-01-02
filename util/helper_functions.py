@@ -17,7 +17,7 @@ def returnNotMatches(a, b):
 
 
 def regular_time_to_unix(date):
-    if math.isnan(date):
+    if date is None:
         return np.nan
     else:
         return int((date - datetime.date(1970, 1, 1)).total_seconds())

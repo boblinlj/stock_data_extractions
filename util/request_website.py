@@ -63,7 +63,7 @@ class YahooWebParser:
 
     def _parse_html_for_json(self):
         if self.response is None:
-            return None
+            raise WebParseError(f'Response is empty for {self.url}')
         elif self.response.status_code == 200:
             soup = BeautifulSoup(self.response.text, 'html.parser')
             pattern = re.compile(r'\s--\sData\s--\s')
@@ -78,7 +78,7 @@ class YahooWebParser:
             except AttributeError:
                 raise AttributeError
         else:
-            return None
+            raise WebParseError(f'Response status code is {self.response.status_code} for {self.url}')
 
     def parse(self):
         return self._parse_html_for_json()
@@ -91,12 +91,12 @@ class YahooAPIParser:
         self.response = GetWebsite(self.url).response()
 
     def _parse_for_json(self):
-        if self.response is not None:
-            return None
+        if self.response is None:
+            raise WebParseError(f'Response is empty for {self.url}')
         elif self.response.status_code == 200:
             return json.loads(self.response.text)
         else:
-            return None
+            raise WebParseError(f'Response status code is {self.response.status_code} for {self.url}')
 
     def parse(self):
         return self._parse_for_json()

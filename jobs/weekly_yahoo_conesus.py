@@ -15,7 +15,7 @@ runtime = datetime.datetime.today().date()
 print(runtime)
 print("*" * 30)
 print("Extracting Yahoo Analysis Data")
-YahooAnalysis = YahooAnalysis(updated_dt=runtime, upload_to_gcp=False, batch_run=True, loggerFileName=loggerFileName)
+YahooAnalysis = YahooAnalysis(updated_dt=runtime, batch_run=True, loggerFileName=loggerFileName)
 YahooAnalysis.run_job()
 
 outputs = ['yahoo_consensus']
@@ -27,7 +27,7 @@ for sql_out in outputs:
 
 
 print("Start Uploading Files to GCP")
-# items = os.listdir(os.path.join(jcfg.JOB_ROOT, "sql_outputs"))
+
 items = [f'insert_{file}_{runtime}.sql' for file in outputs]
 for each_item in items:
     if upload_to_bucket(each_item, os.path.join(jcfg.JOB_ROOT, "../sql_outputs", each_item), 'stock_data_busket2'):

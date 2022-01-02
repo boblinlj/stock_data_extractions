@@ -21,16 +21,17 @@ class DatabaseManagement:
     except Exception as e:
         raise DatabaseManagementError(f'database cannot be created, {e}')
 
-    def __init__(self, data_df=None, table=None, key=None, where=None, sql=None):
+    def __init__(self, data_df=None, table=None, key=None, where=None, sql=None, insert_index=False):
         self.data_df = data_df
         self.table = table
         self.key = key
         self.where = where
         self.sql = sql
+        self.insert_index = insert_index
 
     def insert_db(self):
         try:
-            if self.data_df is None:
+            if self.data_df is None or self.data_df.empty:
                 raise DatabaseManagementError(f"dataframe is empty, therefore cannot be inserted")
             elif self.table is None:
                 DatabaseManagementError(f"table to be inserted is empty, therefore cannot be inserted")
@@ -38,7 +39,7 @@ class DatabaseManagement:
                 self.data_df.to_sql(name=self.table,
                                     con=self.cnn,
                                     if_exists='append',
-                                    index=False,
+                                    index=self.insert_index,
                                     method='multi',
                                     chunksize=200)
         except Exception as e:
@@ -69,3 +70,15 @@ class DatabaseManagement:
             return pd.read_sql(con=self.cnn,
                                sql=self._construct_sql())[self.key].to_list()
 
+    def get_record(self):
+        if all(var is None for var in [self.key, self.table, self.where]):
+            raise DatabaseManagementError(
+                f'cannot run sql, due to critical variable missing (key, table, where)')
+        else:
+            return pd.read_sql(con=self.cnn,
+                               sql=self._construct_sql())
+
+
+if __name__=='__main__':
+    obj = DatabaseManagement(table='price', key='max(timestamp)', where="ticker = 'AAC'")
+    print(obj.check_population())
