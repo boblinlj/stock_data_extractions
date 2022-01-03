@@ -91,7 +91,7 @@ class FactorJob:
 
         self.logger.info(f"-----Upload SQL outputs to GCP-----")
         file = f'insert_model_1_factors_{self.updated_dt}.sql'
-        if upload_to_bucket(file, os.path.join(jcfg.JOB_ROOT, "../sql_outputs", file), 'stock_data_busket2'):
+        if upload_to_bucket(file, os.path.join(jcfg.JOB_ROOT, "sql_outputs", file), 'stock_data_busket2'):
             self.logger.info("GCP upload successful for file = {}".format(file))
         else:
             self.logger.debug("Failed: GCP upload failed for file = {}".format(file))

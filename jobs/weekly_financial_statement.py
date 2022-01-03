@@ -25,7 +25,7 @@ for sql_out in outputs:
 print("Start Uploading Files to GCP")
 items = [f'insert_{file}_{runtime}.sql' for file in outputs]
 for each_item in items:
-    if upload_to_bucket(each_item, os.path.join(jcfg.JOB_ROOT, "../sql_outputs", each_item), 'stock_data_busket2'):
+    if upload_to_bucket(each_item, os.path.join(jcfg.JOB_ROOT, "sql_outputs", each_item), 'stock_data_busket2'):
         print("Successful: GCP upload successful for file = {}".format(each_item))
     else:
         print("Failed: GCP upload failed for file = {}".format(each_item))
