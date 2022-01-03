@@ -95,7 +95,7 @@ class YahooPrice:
                 'includePrePost={prepost}&' \
                 'events=div%2Csplit'
 
-    def __init__(self, stock, start_dt, end_dt=None, interval='1d', includePrePost='false', loggerFileName=None):
+    def __init__(self, stock, start_dt, end_dt=None, interval='1d', includePrePost='false', loggerFileName=None, disable_log=False):
         self.stock = stock
         self.start_dt = regular_time_to_unix(start_dt)
         if end_dt is None:
@@ -105,11 +105,12 @@ class YahooPrice:
         self.interval = interval
         self.includePrePost = includePrePost
         self.loggerFileName = loggerFileName
+        self.disable_log = disable_log
         self.latest_data_date = DatabaseManagement(table='price',
                                                    key='max(timestamp)',
                                                    where=f"ticker = '{self.stock}'"
                                                    ).check_population()[0]
-        self.logger = create_log(loggerName='YahooPrice', loggerFileName=None)
+        self.logger = create_log(loggerName='YahooPrice', loggerFileName=self.loggerFileName, disable_log=self.disable_log)
 
     def get_basic_stock_price(self):
         url = self.YAHOO_API_URL_BASE + self.CHART_API
@@ -120,14 +121,17 @@ class YahooPrice:
                          prepost=self.includePrePost)
         try:
             js = YahooAPIParser(url=url).parse()
+
             if js is None:
                 self.logger.debug(f"{self.stock} does not have correct data from Yahoo")
+                return pd.DataFrame()
             else:
                 output = ReadYahooPrice(js, details_ind=False).parse()
                 output['ticker'] = self.stock
                 return output
         except WebParseError:
             self.logger.debug(f"{self.stock} does not have correct API from Yahoo")
+            return pd.DataFrame()
 
     def get_detailed_stock_price(self):
         url = self.YAHOO_API_URL_BASE + self.CHART_API
@@ -140,6 +144,7 @@ class YahooPrice:
             js = YahooAPIParser(url=url).parse()
             if js is None:
                 self.logger.debug(f"{self.stock} does not have correct data from Yahoo")
+                return pd.DataFrame()
             else:
                 output_df = ReadYahooPrice(js, details_ind=True).parse()
                 output_df['ticker'] = self.stock
@@ -149,6 +154,7 @@ class YahooPrice:
                     return output_df.iloc[output_df.index > pd.to_datetime(self.latest_data_date)]
         except WebParseError:
             self.logger.debug(f"{self.stock} does not have correct API from Yahoo")
+            return pd.DataFrame()
 
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@ JOB_ROOT = "C:\\Users\\Bob Lin\\SynologyDrive\\Python Projects\\yahoo_spider\\st
 LOG_FORMATTER = '%(levelname)s:%(name)s:%(message)s'
 LOG_LVL = 'logging.DEBUG'
 GOOGLE_KEY = 'bobanalytics-baba01215163.json'
+GCP_BUSKET_NAME = 'stock_data_busket2'
 
 BLOCK = ['PTMN', 'NAN', 'KTOV', 'PIC', 'HCAC', 'PTAC', 'IOR', 'HYAC', 'PTI', 'MVC', 'MNCL', 'GEC']
 

@@ -44,13 +44,15 @@ class CalculateFactors:
         self.updated_dt = updated_dt  # assuming the updated_dt is the end_dt
         self.stock = stock
         # read price factor data
-        self.price_f = YahooPrice(self.stock, start_dt, updated_dt).get_basic_stock_price()
-        self.price_f.index.names = ['asOfDate']
-        self.price_f.drop(columns=['ticker'], axis=1, inplace=True)
+        self.price_f = YahooPrice(self.stock, start_dt, updated_dt, disable_log=True).get_basic_stock_price()
+        if not self.price_f.empty:
+            self.price_f.index.names = ['asOfDate']
+            self.price_f.drop(columns=['ticker'], axis=1, inplace=True)
 
-        self.market_f = YahooPrice(self.market, start_dt, updated_dt).get_basic_stock_price()
-        self.market_f.drop(columns=['ticker'], axis=1, inplace=True)
-        self.market_f.index.names = ['asOfDate']
+        self.market_f = YahooPrice(self.market, start_dt, updated_dt, disable_log=True).get_basic_stock_price()
+        if not self.market_f.empty:
+            self.market_f.drop(columns=['ticker'], axis=1, inplace=True)
+            self.market_f.index.names = ['asOfDate']
 
         # read time dimension data
         self.time_d = DatabaseManagement(table='date_d',
@@ -86,7 +88,7 @@ class CalculateFactors:
 
     def run_pipeline(self):
 
-        if self.price_f.empty:
+        if self.price_f.empty or self.price_f.empty:
             return pd.DataFrame()
         elif self.quarterly_data.empty:
             return pd.DataFrame()

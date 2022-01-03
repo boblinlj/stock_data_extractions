@@ -29,4 +29,3 @@ for each_item in items:
         print("Successful: GCP upload successful for file = {}".format(each_item))
     else:
         print("Failed: GCP upload failed for file = {}".format(each_item))
-

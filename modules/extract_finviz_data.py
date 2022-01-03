@@ -10,6 +10,7 @@ import os
 import time
 import logging
 from util.helper_functions import create_log
+from util.request_website import FinvizParserPerPage
 
 
 class Finviz:

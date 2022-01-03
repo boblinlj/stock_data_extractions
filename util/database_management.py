@@ -78,7 +78,14 @@ class DatabaseManagement:
             return pd.read_sql(con=self.cnn,
                                sql=self._construct_sql())
 
+    def run_sql(self, sql=None, out_lst=False):
+        if sql is None:
+            raise DatabaseManagementError(
+                f'cannot run sql, due to critical variable missing (sql)')
+        else:
+            return pd.read_sql(con=self.cnn, sql=sql)
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     obj = DatabaseManagement(table='price', key='max(timestamp)', where="ticker = 'AAC'")
     print(obj.check_population())

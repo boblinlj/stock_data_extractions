@@ -59,7 +59,7 @@ class YahooWebParser:
     def __init__(self, url, proxy=True):
         self.url = url
         self.proxy = proxy
-        self.response = GetWebsite(self.url).response()
+        self.response = GetWebsite(url=self.url, proxy=self.proxy).response()
 
     def _parse_html_for_json(self):
         if self.response is None:
@@ -81,14 +81,17 @@ class YahooWebParser:
             raise WebParseError(f'Response status code is {self.response.status_code} for {self.url}')
 
     def parse(self):
-        return self._parse_html_for_json()
+        for trail in range(5):
+            js = self._parse_html_for_json()
+            if js is not None:
+                return self._parse_html_for_json()
 
 
 class YahooAPIParser:
     def __init__(self, url, proxy=True):
         self.url = url
         self.proxy = proxy
-        self.response = GetWebsite(self.url).response()
+        self.response = GetWebsite(url=self.url, proxy=self.proxy).response()
 
     def _parse_for_json(self):
         if self.response is None:
@@ -99,14 +102,19 @@ class YahooAPIParser:
             raise WebParseError(f'Response status code is {self.response.status_code} for {self.url}')
 
     def parse(self):
-        return self._parse_for_json()
+        for trail in range(5):
+            js = self._parse_for_json()
+            if js is not None:
+                return self._parse_for_json()
+
+        return None
 
 
 class FinvizParserPerPage:
-    def __init__(self, url, proxy=True):
+    def __init__(self, url, proxy=False):
         self.url = url
         self.proxy = proxy
-        self.response = GetWebsite(self.url).response()
+        self.response = GetWebsite(url=self.url, proxy=self.proxy).response()
 
     def parse_for_df(self):
         df = pd.read_html(self.response.text)[7]

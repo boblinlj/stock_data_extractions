@@ -2,7 +2,6 @@ from configs import database_configs as dbcfg
 from sqlalchemy import create_engine
 import pandas as pd
 
-
 class StockPopulation:
 
     database_ip = dbcfg.MYSQL_HOST
@@ -70,3 +69,22 @@ class StockPopulation:
         pop4 = self.get_REIT_list()
 
         return list(set(pop1 + pop2 + pop3 + pop4))
+
+
+class SetPopulation:
+    def __init__(self, user_pop):
+        self.user_pop = user_pop
+        self.saved_stock_pop = StockPopulation()
+
+    def setPop(self):
+        pop = {'ETF': self.saved_stock_pop.get_ETF_list(),
+               'STOCK': self.saved_stock_pop.get_stock_list(),
+               'AARON': self.saved_stock_pop.get_stock_list_from_arron(),
+               'REIT': self.saved_stock_pop.get_REIT_list(),
+               'ALL': self.saved_stock_pop.all_stock(),
+               'STOCK+AARON': self.saved_stock_pop.all_stocks_wo_ETF_RIET()
+               }
+        if pop.get(self.user_pop) is not None:
+            return pop[self.user_pop]
+        else:
+            return []

@@ -75,9 +75,10 @@ class YahooStats:
     stock_lst = StockPopulation()
     failed_extract = []
 
-    def __init__(self, updated_dt, batch=False, loggerFileName=None):
+    def __init__(self, updated_dt, targeted_pop, batch=False, loggerFileName=None):
         self.loggerFileName = loggerFileName
         self.updated_dt = updated_dt
+        self.targeted_pop = targeted_pop
         self.batch = batch
         self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
 
@@ -144,10 +145,7 @@ class YahooStats:
         start = time.time()
 
         self.logger.info("-------------First Extract Starts-------------")
-        stocks = self.stock_lst.get_stock_list() \
-                 + self.stock_lst.get_stock_list_from_arron() \
-                 + self.stock_lst.get_REIT_list() \
-                 + self.stock_lst.get_ETF_list()
+        stocks = self.stock_lst.all_stock()
 
         stocks = dedup_list(stocks)
         existing_rec = DatabaseManagement(table='yahoo_fundamental',

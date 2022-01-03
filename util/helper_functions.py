@@ -30,7 +30,7 @@ def unix_to_regular_time(unix: int):
         return datetime.datetime.utcfromtimestamp(unix).strftime('%Y-%m-%d')
 
 
-def create_log(loggerName=__name__, loggerFileName=None):
+def create_log(loggerName=__name__, loggerFileName=None, disable_log=False):
     logger = logging.getLogger(loggerName)
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter(jcfg.LOG_FORMATTER)
@@ -43,5 +43,8 @@ def create_log(loggerName=__name__, loggerFileName=None):
         file_handler = logging.FileHandler(os.path.join(jcfg.JOB_ROOT, 'logs', f'{loggerFileName}'))
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
+
+    if disable_log:
+        logger.disabled = True
 
     return logger
