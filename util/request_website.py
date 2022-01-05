@@ -2,6 +2,8 @@ import requests
 import random
 from configs import job_configs as jcfg
 from configs import prox_configs as pcfg
+from configs import finviz_configs as fcfg
+from util.finviz_cnv_str_to_num import convert_str_to_num
 import json
 from bs4 import BeautifulSoup
 import re
@@ -42,7 +44,7 @@ class GetWebsite:
             response = session.get(self.url, allow_redirects=False)
             return response
         except requests.exceptions.ConnectTimeout:
-            response = session.get(self.url, allow_redirects=False)
+            response = session.get(self.url, allow_redirects=True)
             return response
         except requests.exceptions.HTTPError as e:
             raise WebParseError(f'unable to parse url = {self.url} due to {e}')
@@ -123,6 +125,10 @@ class FinvizParserPerPage:
             df.columns = df.iloc[0]
             df = df.iloc[1:]
             df.replace(to_replace='-', value=np.NaN, inplace=True)
+            df.rename(columns=fcfg.COL_RENAMES, inplace=True)
+            for column in df.columns:
+                df[column] = df[column].apply(convert_str_to_num)
+            df['ipo_date'] = pd.to_datetime(df['ipo_date'], format='%m/%d/%Y')
             return df
         else:
             return pd.DataFrame()

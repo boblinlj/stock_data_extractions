@@ -30,6 +30,11 @@ def unix_to_regular_time(unix: int):
         return datetime.datetime.utcfromtimestamp(unix).strftime('%Y-%m-%d')
 
 
+def check_existing_entries(df_to_check, existing_df):
+    df_after_check = df_to_check[~df_to_check.index.isin(existing_df.index, level=0)]
+    return df_after_check
+
+
 def create_log(loggerName=__name__, loggerFileName=None, disable_log=False):
     logger = logging.getLogger(loggerName)
     logger.setLevel(logging.DEBUG)

@@ -18,11 +18,11 @@ def DailyExtractions():
     print(runtime)
     print("*" * 30)
     print("Extracting Finviz")
-    finviz = Finviz(runtime, loggerFileName=loggerFileName)
-    finviz.run()
+    # finviz = Finviz(runtime, batch=False, loggerFileName=loggerFileName)
+    # finviz.run()
     print("*" * 30)
     print("Extracting Yahoo Statistics")
-    spider2 = YahooStats(runtime, batch=True, loggerFileName=loggerFileName)
+    spider2 = YahooStats(runtime, targeted_pop='ALL', batch=True, loggerFileName=loggerFileName)
     spider2.run()
     print("*" * 30)
 
@@ -41,3 +41,5 @@ def DailyExtractions():
         else:
             print("Failed: GCP upload failed for file = {}".format(each_item))
 
+
+DailyExtractions()

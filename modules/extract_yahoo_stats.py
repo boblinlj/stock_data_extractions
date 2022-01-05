@@ -10,7 +10,7 @@ from util.helper_functions import unix_to_regular_time
 from util.helper_functions import dedup_list
 from util.helper_functions import returnNotMatches
 from util.parallel_process import *
-from util.request_website import YahooWebParser
+from util.request_website import YahooWebParser, WebParseError
 from util.database_management import DatabaseManagement, DatabaseManagementError
 
 
@@ -83,10 +83,8 @@ class YahooStats:
         self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
 
     def _get_stock_statistics(self, stock):
-
-        data = YahooWebParser(url=self.BASE_URL.format(stock=stock)).parse()
-
         try:
+            data = YahooWebParser(url=self.BASE_URL.format(stock=stock)).parse()
             out_df = ReadYahooStatsData(data).parse()
             out_df['updated_dt'] = self.updated_dt
             return out_df
@@ -113,7 +111,7 @@ class YahooStats:
         # enter yahoo fundamental table
         try:
             DatabaseManagement(data_df=data_df.drop(ycfg.YAHOO_STATS_DROP_COLUMNS, axis=1, errors='ignore'),
-                               table='yahoo_fundamental')
+                               table='yahoo_fundamental').insert_db()
             self.logger.info(
                 "yahoo_fundamental: Yahoo statistics data entered successfully for stock = {}".format(stock))
         except DatabaseManagementError:
@@ -123,7 +121,7 @@ class YahooStats:
         # enter yahoo price table
         try:
             DatabaseManagement(data_df=data_df[ycfg.PRICE_TABLE_COLUMNS],
-                               table='yahoo_price')
+                               table='yahoo_price').insert_db()
             self.logger.info("yahoo_price: Yahoo price data entered successfully for stock = {}".format(stock))
         except DatabaseManagementError:
             self.logger.info("yahoo_price: Yahoo price data entered failed for stock = {}".format(stock))
@@ -132,7 +130,7 @@ class YahooStats:
         # enter yahoo consensus table
         try:
             DatabaseManagement(data_df=data_df[ycfg.YAHOO_CONSENSUS_COLUMNS],
-                               table='yahoo_consensus_price')
+                               table='yahoo_consensus_price').insert_db()
             self.logger.info(
                 "yahoo_consensus_price: Yahoo consensus data entered successfully for stock = {}".format(stock))
         except DatabaseManagementError:
