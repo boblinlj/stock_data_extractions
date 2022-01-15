@@ -13,7 +13,7 @@ import datetime
 from util.parallel_process import *
 from util.request_website import YahooAPIParser
 from util.database_management import DatabaseManagement, DatabaseManagementError
-from util.get_stock_population import StockPopulation
+from util.get_stock_population import SetPopulation
 
 pd.set_option('display.max_columns', None)
 
@@ -82,10 +82,9 @@ class YahooFinancial:
 
     failed_extract = []
 
-    stock_lst = StockPopulation()
-
-    def __init__(self, updated_dt, batch=False, loggerFileName=None):
+    def __init__(self, updated_dt, targeted_population,batch=False, loggerFileName=None):
         self.updated_dt = updated_dt
+        self.targeted_population = targeted_population
         self.loggerFileName = loggerFileName
         self.batch = batch
         self.logger = create_log(loggerName='YahooFinancialStatements', loggerFileName=self.loggerFileName)
@@ -165,7 +164,8 @@ class YahooFinancial:
         start = time.time()
         self._existing_dt()
 
-        stocks = self.stock_lst.all_stocks_wo_ETF_RIET()[:]
+        stocks = SetPopulation(user_pop=self.targeted_population).setPop()
+        # stocks = self.stock_lst.all_stocks_wo_ETF_RIET()[:]
 
         self.logger.info("-------------First Extract Starts-------------")
         self.logger.info("{} Stocks to be extracted".format(len(stocks)))
@@ -200,6 +200,7 @@ class YahooFinancial:
 
 if __name__ == '__main__':
     spider = YahooFinancial(datetime.datetime.today().date(),
+                            targeted_population='STOCK+AARON',
                             batch=True,
                             loggerFileName=None)
     # spider._existing_dt()

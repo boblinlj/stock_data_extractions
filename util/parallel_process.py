@@ -3,7 +3,7 @@ from tqdm import tqdm
 import concurrent.futures
 
 
-def parallel_process(array, function, n_jobs=jcfg.WORKER, use_kwargs=False, front_num=3):
+def parallel_process(array, function, n_jobs=jcfg.WORKER, use_kwargs=False, front_num=3, use_tqdm=True):
     """
         A parallel version of the map function with a progress bar.
 
@@ -24,7 +24,10 @@ def parallel_process(array, function, n_jobs=jcfg.WORKER, use_kwargs=False, fron
         front = [function(**a) if use_kwargs else function(a) for a in array[:front_num]]
     # If we set n_jobs to 1, just run a list comprehension. This is useful for benchmarking and debugging.
     if n_jobs == 1:
-        return front + [function(**a) if use_kwargs else function(a) for a in tqdm(array[front_num:])]
+        if use_tqdm:
+            return front + [function(**a) if use_kwargs else function(a) for a in tqdm(array[front_num:])]
+        else:
+            return front + [function(**a) if use_kwargs else function(a) for a in array[front_num:]]
     # Assemble the workers
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_jobs) as pool:
         # Pass the elements of array into function
@@ -44,13 +47,30 @@ def parallel_process(array, function, n_jobs=jcfg.WORKER, use_kwargs=False, fron
             'ncols': 80
         }
         # Print out the progress as tasks complete
-        for f in tqdm(concurrent.futures.as_completed(futures), **kwargs):
-            pass
+        if use_tqdm:
+            for f in tqdm(concurrent.futures.as_completed(futures), **kwargs):
+                pass
+        else:
+            for f in concurrent.futures.as_completed(futures):
+                pass
     out = []
     # Get the results from the futures.
-    for i, future in tqdm(enumerate(futures)):
-        try:
-            out.append(future.result())
-        except Exception as e:
-            out.append(e)
-    return front + out
+    if use_tqdm:
+        for i, future in tqdm(enumerate(futures)):
+            try:
+                out.append(future.result())
+            except Exception as e:
+                out.append(e)
+        return front + out
+    else:
+        for i, future in enumerate(futures):
+            try:
+                out.append(future.result())
+            except Exception as e:
+                out.append(e)
+        return front + out
+
+
+
+
+

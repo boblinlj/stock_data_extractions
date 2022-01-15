@@ -50,24 +50,19 @@ class GetWebsite:
             raise WebParseError(f'unable to parse url = {self.url} due to {e}')
         except requests.exceptions.RequestException as e:
             raise WebParseError(f'unable to parse url = {self.url} due to {e}')
-        except Exception:
-            raise WebParseError(f'unable to parse url = {self.url}')
+        except Exception as e:
+            raise WebParseError(f'unable to parse url = {self.url} due to {e}')
 
     def response(self):
         return self._get_response()
 
 
-class YahooWebParser:
-    def __init__(self, url, proxy=True):
-        self.url = url
-        self.proxy = proxy
-        self.response = GetWebsite(url=self.url, proxy=self.proxy).response()
-
+class YahooWebParser(GetWebsite):
     def _parse_html_for_json(self):
-        if self.response is None:
+        if self.response() is None:
             raise WebParseError(f'Response is empty for {self.url}')
-        elif self.response.status_code == 200:
-            soup = BeautifulSoup(self.response.text, 'html.parser')
+        elif self.response().status_code == 200:
+            soup = BeautifulSoup(self.response().text, 'html.parser')
             pattern = re.compile(r'\s--\sData\s--\s')
             try:
                 script_data = soup.find('script', text=pattern).contents[0]
@@ -77,10 +72,10 @@ class YahooWebParser:
                 else:
                     json_data = None
                 return json_data
-            except AttributeError:
-                raise AttributeError
+            except AttributeError as e:
+                raise WebParseError(f'Attribution error {self.response().status_code} for {self.url}')
         else:
-            raise WebParseError(f'Response status code is {self.response.status_code} for {self.url}')
+            raise WebParseError(f'Response status code is {self.response().status_code} for {self.url}')
 
     def parse(self):
         for trail in range(5):
@@ -89,19 +84,14 @@ class YahooWebParser:
                 return self._parse_html_for_json()
 
 
-class YahooAPIParser:
-    def __init__(self, url, proxy=True):
-        self.url = url
-        self.proxy = proxy
-        self.response = GetWebsite(url=self.url, proxy=self.proxy).response()
-
+class YahooAPIParser(YahooWebParser):
     def _parse_for_json(self):
-        if self.response is None:
+        if self.response() is None:
             raise WebParseError(f'Response is empty for {self.url}')
-        elif self.response.status_code == 200:
-            return json.loads(self.response.text)
+        elif self.response().status_code == 200:
+            return json.loads(self.response().text)
         else:
-            raise WebParseError(f'Response status code is {self.response.status_code} for {self.url}')
+            raise WebParseError(f'Response status code is {self.response().status_code} for {self.url}')
 
     def parse(self):
         for trail in range(5):
@@ -112,14 +102,9 @@ class YahooAPIParser:
         return None
 
 
-class FinvizParserPerPage:
-    def __init__(self, url, proxy=False):
-        self.url = url
-        self.proxy = proxy
-        self.response = GetWebsite(url=self.url, proxy=self.proxy).response()
-
+class FinvizParserPerPage(GetWebsite):
     def parse_for_df(self):
-        df = pd.read_html(self.response.text)[7]
+        df = pd.read_html(self.response().text)[7]
 
         if df.shape[1] == 70:
             df.columns = df.iloc[0]
@@ -135,7 +120,7 @@ class FinvizParserPerPage:
 
     @property
     def no_of_population(self):
-        df = pd.read_html(self.response.text)[6]
+        df = pd.read_html(self.response().text)[6]
 
         if df.shape[0] == 1:
             return int(df[0][0].split(' ')[1])

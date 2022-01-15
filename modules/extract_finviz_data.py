@@ -43,7 +43,6 @@ class Finviz:
         content_df.set_index(['ticker'], inplace=True)
         final_df = self._check_existing_entries(content_df, self.existing_data)
 
-
         return parser.no_of_population, final_df
 
     def _process_each_page(self, page_num):
@@ -51,8 +50,7 @@ class Finviz:
         if stock_df.empty:
             self.logger.debug(f"data is empty for page={page_num}")
             return None
-        # print(page_num, stock_df.size)
-        # print(stock_df)
+
         try:
             DatabaseManagement(data_df=stock_df[fcfg.FINVIZ_TICKERS],
                                table='finviz_tickers',

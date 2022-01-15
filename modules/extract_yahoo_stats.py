@@ -152,7 +152,7 @@ class YahooStats:
                                           ).check_population()
         stocks = returnNotMatches(stocks, existing_rec + jcfg.BLOCK)[:]
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=False)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info("-------------First Extract Ends-------------")
@@ -161,7 +161,7 @@ class YahooStats:
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=False)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info("-------------Second Extract Ends-------------")
@@ -170,13 +170,13 @@ class YahooStats:
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=False)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info("-------------Third Extract Ends-------------")
 
         end = time.time()
-        self.logger.info("took {} minutes".format(round((end - start) / 60)))
+        print("took {} minutes".format(round((end - start) / 60)))
 
 
 if __name__ == '__main__':
