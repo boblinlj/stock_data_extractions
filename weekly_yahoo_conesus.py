@@ -15,7 +15,7 @@ runtime = datetime.datetime.today().date()
 print(runtime)
 print("*" * 30)
 print("Extracting Yahoo Analysis Data")
-YahooAnalysis = YahooAnalysis(updated_dt=runtime, batch_run=True, loggerFileName=loggerFileName)
+YahooAnalysis = YahooAnalysis(updated_dt=runtime, batch_run=True, loggerFileName=loggerFileName, use_tqdm=False)
 YahooAnalysis.run_job()
 
 outputs = ['yahoo_consensus']

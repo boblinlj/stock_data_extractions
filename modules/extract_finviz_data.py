@@ -12,7 +12,7 @@ class Finviz:
     url_base = 'https://finviz.com/screener.ashx?v=152&ft=4'
     workers = jcfg.WORKER
 
-    def __init__(self, updated_dt, batch=True, loggerFileName=None):
+    def __init__(self, updated_dt, batch=True, loggerFileName=None, use_tqdm=True):
         self.loggerFileName = loggerFileName
         self.updated_dt = updated_dt
         self.batch = batch
@@ -22,6 +22,7 @@ class Finviz:
         self.existing_data['updated_dt'] = pd.to_datetime(self.existing_data['updated_dt'])
         self.existing_data.set_index(['ticker'], inplace=True)
         self.logger = create_log(loggerName='Finviz', loggerFileName=self.loggerFileName)
+        self.use_tqdm = use_tqdm
 
     def finviz_url_builder(self, page_num):
         url_opt = '&c=' + ','.join(str(i) for i in range(1, 71))
@@ -66,9 +67,9 @@ class Finviz:
         no_of_pop, final_df = self._parse_each_page(1)
         total_pages = int(round(no_of_pop/20, 0))
         if self.batch:
-            parallel_process([x+1 for x in range(total_pages)], self._process_each_page, self.workers)
+            parallel_process([x+1 for x in range(total_pages)], self._process_each_page, self.workers, use_tqdm=self.use_tqdm)
         else:
-            parallel_process([x+1 for x in range(total_pages)], self._process_each_page, 1)
+            parallel_process([x+1 for x in range(total_pages)], self._process_each_page, 1, use_tqdm=self.use_tqdm)
 
     def run(self):
         start = time.time()
@@ -79,6 +80,6 @@ class Finviz:
 
 if __name__ == '__main__':
     # test
-    finviz = Finviz('2022-01-04', batch=False, loggerFileName=None)
+    finviz = Finviz('2022-01-04', batch=False, loggerFileName=None, use_tqdm=False)
     finviz._process_each_page(1)
     # finviz.run()

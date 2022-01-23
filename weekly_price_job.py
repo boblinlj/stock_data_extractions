@@ -15,13 +15,14 @@ class PriceJob:
     stock_lst = StockPopulation()
     workers = jcfg.WORKER
 
-    def __init__(self, start_dt, updated_dt, batch_run=False, loggerFileName=None):
+    def __init__(self, start_dt, updated_dt, batch_run=False, loggerFileName=None, use_tqdm=True):
         # init the input
         self.updated_dt = updated_dt
         self.start_dt = start_dt
         self.batch_run = batch_run
         self.loggerFileName = loggerFileName
         self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
+        self.use_tqdm = use_tqdm
 
     def _run_each_stock(self, stock):
         self.logger.info(f"Start Processing stock = {stock}")
@@ -57,7 +58,7 @@ class PriceJob:
         self.logger.info(f'There are {len(stocks)} stocks to be extracted')
 
         if self.batch_run:
-            parallel_process(stocks, self._run_each_stock, self.workers)
+            parallel_process(stocks, self._run_each_stock, self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stocks, self._run_each_stock, 1)
 

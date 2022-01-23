@@ -17,6 +17,7 @@ def parallel_process(array, function, n_jobs=jcfg.WORKER, use_kwargs=False, fron
                 Useful for catching bugs
         Returns:
             [function(array[0]), function(array[1]), ...]
+            :param use_tqdm:
     """
     # We run the first few iterations serially to catch bugs
     front = []

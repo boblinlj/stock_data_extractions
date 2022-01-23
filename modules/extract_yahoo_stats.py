@@ -75,12 +75,13 @@ class YahooStats:
     stock_lst = StockPopulation()
     failed_extract = []
 
-    def __init__(self, updated_dt, targeted_pop, batch=False, loggerFileName=None):
+    def __init__(self, updated_dt, targeted_pop, batch=False, loggerFileName=None, use_tqdm=True):
         self.loggerFileName = loggerFileName
         self.updated_dt = updated_dt
         self.targeted_pop = targeted_pop
         self.batch = batch
         self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
+        self.use_tqdm = use_tqdm
 
     def _get_stock_statistics(self, stock):
         try:
@@ -152,7 +153,7 @@ class YahooStats:
                                           ).check_population()
         stocks = returnNotMatches(stocks, existing_rec + jcfg.BLOCK)[:]
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=False)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info("-------------First Extract Ends-------------")
@@ -161,7 +162,7 @@ class YahooStats:
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=False)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info("-------------Second Extract Ends-------------")
@@ -170,7 +171,7 @@ class YahooStats:
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=False)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info("-------------Third Extract Ends-------------")
@@ -180,5 +181,5 @@ class YahooStats:
 
 
 if __name__ == '__main__':
-    spider = YahooStats(date(9999, 12, 31), batch=True, loggerFileName=None)
+    spider = YahooStats(date(9999, 12, 31), batch=True, loggerFileName=None, use_tqdm=False)
     spider.run()

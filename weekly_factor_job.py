@@ -15,7 +15,6 @@ from util.helper_functions import returnNotMatches
 class FactorJob:
 
     workers = jcfg.WORKER
-
     no_of_db_entries = 0
 
     def __init__(self, start_dt, updated_dt, targeted_table, targeted_pop, batch_run=True, loggerFileName=None):
@@ -82,11 +81,9 @@ class FactorJob:
 
     def run(self):
         start = time.time()
-
-        self.job()
+        # self.job()
         self._write_sql_output()
         self._upload_to_gcp()
-
         end = time.time()
         self.logger.info("Extraction took {} minutes".format(round((end - start) / 60)))
 
@@ -95,9 +92,9 @@ if __name__ == '__main__':
     loggerFileName = f"weekly_model_1_factor_{date.today().strftime('%Y%m%d')}.log"
 
     obj = FactorJob(start_dt=date(2010, 1, 1),
-                    updated_dt=date.today(),
+                    updated_dt=date(2022, 1, 22),
                     targeted_table='model_1_factors',
                     targeted_pop='AARON',
                     batch_run=False,
-                    loggerFileName=loggerFileName)
+                    loggerFileName=None)
     obj.run()

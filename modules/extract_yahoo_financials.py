@@ -82,12 +82,13 @@ class YahooFinancial:
 
     failed_extract = []
 
-    def __init__(self, updated_dt, targeted_population,batch=False, loggerFileName=None):
+    def __init__(self, updated_dt, targeted_population,batch=False, loggerFileName=None, use_tqdm=True):
         self.updated_dt = updated_dt
         self.targeted_population = targeted_population
         self.loggerFileName = loggerFileName
         self.batch = batch
         self.logger = create_log(loggerName='YahooFinancialStatements', loggerFileName=self.loggerFileName)
+        self.use_tqdm = use_tqdm
 
     def _existing_dt(self):
         annual_data = DatabaseManagement(table='yahoo_annual_fundamental',
@@ -170,7 +171,7 @@ class YahooFinancial:
         self.logger.info("-------------First Extract Starts-------------")
         self.logger.info("{} Stocks to be extracted".format(len(stocks)))
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info(self.failed_extract)
@@ -179,7 +180,7 @@ class YahooFinancial:
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info(self.failed_extract)
@@ -188,7 +189,7 @@ class YahooFinancial:
         stocks = dedup_list(self.failed_extract)
         self.failed_extract = []
         if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers)
+            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
         self.logger.info(self.failed_extract)

@@ -14,7 +14,7 @@ create_log(loggerName='financial_statement_job',
 runtime = datetime.datetime.today().date()
 
 print("Extracting Financial Statements")
-spider3 = YahooFinancial(updated_dt=runtime, batch=True, loggerFileName=loggerFileName)
+spider3 = YahooFinancial(updated_dt=runtime, batch=True, loggerFileName=loggerFileName, use_tqdm=False)
 spider3.run()
 
 outputs = ['yahoo_annual_fundamental', 'yahoo_quarterly_fundamental', 'yahoo_trailing_fundamental']

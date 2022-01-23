@@ -99,7 +99,7 @@ class YahooAnalysis:
     url = "https://finance.yahoo.com/quote/{ticker}/analysis?p={ticker}"
     stock_lst = StockPopulation()
 
-    def __init__(self, updated_dt, batch_run=True, loggerFileName=None):
+    def __init__(self, updated_dt, batch_run=True, loggerFileName=None, use_tqdm=True):
         # init the input
         self.updated_dt = updated_dt
         self.batch_run = batch_run
@@ -108,6 +108,7 @@ class YahooAnalysis:
         self.existing_rec = DatabaseManagement(table='yahoo_consensus',
                                                key='ticker',
                                                where=f"updated_dt = '{self.updated_dt}'").check_population()
+        self.use_tqdm = use_tqdm
 
     def _get_analysis_data(self, stock):
         try:
@@ -143,7 +144,7 @@ class YahooAnalysis:
 
         self.logger.info(f'There are {len(stock_list)} stocks to be extracted')
         if self.batch_run:
-            parallel_process(stock_list, self._run_each_stock, n_jobs=self.workers)
+            parallel_process(stock_list, self._run_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stock_list, self._run_each_stock, n_jobs=1)
 
