@@ -17,7 +17,7 @@ class FactorJob:
     workers = jcfg.WORKER
     no_of_db_entries = 0
 
-    def __init__(self, start_dt, updated_dt, targeted_table, targeted_pop, batch_run=True, loggerFileName=None):
+    def __init__(self, start_dt, updated_dt, targeted_table, targeted_pop, batch_run=True, loggerFileName=None, use_tqdm=True):
         # init the input
         self.updated_dt = updated_dt
         self.start_dt = start_dt
@@ -32,13 +32,14 @@ class FactorJob:
         # Add logger info
         self.loggerFileName = loggerFileName
         self.logger = create_log(loggerName='factor_calc', loggerFileName=self.loggerFileName)
+        self.use_tqdm = use_tqdm
 
     def _calculate_final_pop(self):
         return returnNotMatches(self.stock_list,
                                 self.existing_list + jcfg.BLOCK)
 
     def _run_each_stock(self, stock):
-        self.logger.info(f"Start Processing stock = {stock}")
+        # self.logger.info(f"Start Processing stock = {stock}")
         # print(f"Start Processing stock = {stock}")
         each_stock = CalculateFactors(stock=stock,
                                       start_dt=self.start_dt,
@@ -47,11 +48,12 @@ class FactorJob:
         try:
             stock_df = each_stock.run_pipeline()
             if stock_df.empty:
-                self.logger.debug(f"Failed:Processing stock = {stock} due to the dataframe is empty")
+                self.logger.debug(f"Failed:Processing stock = {stock} due to the dataframe is empty, "
+                                  f"last date as {each_stock.last_weekly_entry}")
             else:
                 try:
                     DatabaseManagement(data_df=stock_df, table=self.targeted_table, insert_index=True).insert_db()
-                    self.logger.info(f"Success: Entered stock = {stock}")
+                    self.logger.info(f"Success: Entered stock = {stock}, last date as {each_stock.last_weekly_entry}")
                 except DatabaseManagementError as e:
                     self.logger.debug(f"Failed: Entering stock = {stock} as {e}")
         except Exception as e:
@@ -75,9 +77,9 @@ class FactorJob:
         # self.logger.info(f'There are {len(stock_list)} stocks to be extracted')
         print(f'There are {len(stock_list)} stocks to be extracted')
         if self.batch_run:
-            parallel_process(stock_list, self._run_each_stock, self.workers)
+            parallel_process(stock_list, self._run_each_stock, self.workers, use_tqdm=self.use_tqdm)
         else:
-            parallel_process(stock_list, self._run_each_stock, 1)
+            parallel_process(stock_list, self._run_each_stock, 1, use_tqdm=self.use_tqdm)
 
     def run(self):
         start = time.time()
@@ -92,9 +94,10 @@ if __name__ == '__main__':
     loggerFileName = f"weekly_model_1_factor_{date.today().strftime('%Y%m%d')}.log"
 
     obj = FactorJob(start_dt=date(2010, 1, 1),
-                    updated_dt=date(2022, 1, 22),
+                    updated_dt=date(2022,2,5),
                     targeted_table='model_1_factors',
                     targeted_pop='AARON',
-                    batch_run=False,
-                    loggerFileName=None)
+                    batch_run=True,
+                    loggerFileName=None,
+                    use_tqdm=False)
     obj.run()

@@ -185,9 +185,9 @@ class CalculateFactors:
 
 if __name__ == '__main__':
     loggerFileName = f"daily_yahoo_price_{date.today().strftime('%Y%m%d')}.log"
-    obj = CalculateFactors('AAPL', date(2010, 1, 1), date.today(),
-                           loggerFileName=None)
-    df = obj.run_pipeline()
-    print(df.tail())
 
-    pass
+    obj = CalculateFactors('AMD', date(2010, 1, 1), date.today(),
+                           loggerFileName=None)
+    print(obj.last_weekly_entry)
+    df = obj.run_pipeline()
+    print(df)

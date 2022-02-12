@@ -27,15 +27,15 @@ class GetWebsite:
             session.proxies = {'http': 'socks5://{}:{}'.format(pcfg.PROXY_URL, pcfg.PROXY_PROT),
                                'https': 'socks5://{}:{}'.format(pcfg.PROXY_URL, pcfg.PROXY_PROT)}
         session.headers = {
-                            'user-agent': random.choice(jcfg.UA_LIST),
-                            'Accept-Language': 'en-GB,en;q=0.9,en-US;q=0.8,zh-CN;q=0.7,zh;q=0.6,zh-TW;q=0.5',
-                            'Cache-Control': 'no-cache',
-                            'Connection': 'keep-alive',
-                            'Sec-Fetch-Dest': 'iframe',
-                            'Sec-Fetch-Mode': 'navigate',
-                            'Sec-Fetch-Site': 'cross-site',
-                            'origin': 'https://google.com'
-                        }
+            'user-agent': random.choice(jcfg.UA_LIST),
+            'Accept-Language': 'en-GB,en;q=0.9,en-US;q=0.8,zh-CN;q=0.7,zh;q=0.6,zh-TW;q=0.5',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'iframe',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'cross-site',
+            'origin': 'https://google.com'
+        }
         return session
 
     def _get_response(self):
@@ -73,9 +73,11 @@ class YahooWebParser(GetWebsite):
                     json_data = None
                 return json_data
             except AttributeError as e:
-                raise WebParseError(f'Attribution error {self.response().status_code} for {self.url}')
+                raise WebParseError(
+                    f'Attribution error {self.response().status_code} for {self.url}')
         else:
-            raise WebParseError(f'Response status code is {self.response().status_code} for {self.url}')
+            raise WebParseError(
+                f'Response status code is {self.response().status_code} for {self.url}')
 
     def parse(self):
         for trail in range(5):
@@ -91,7 +93,8 @@ class YahooAPIParser(YahooWebParser):
         elif self.response().status_code == 200:
             return json.loads(self.response().text)
         else:
-            raise WebParseError(f'Response status code is {self.response().status_code} for {self.url}')
+            raise WebParseError(
+                f'Response status code is {self.response().status_code} for {self.url}')
 
     def parse(self):
         for trail in range(5):
