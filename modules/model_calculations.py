@@ -174,11 +174,8 @@ class RunModel:
 
         DatabaseManagement(data_df=model_out, table=self.targeted_table, insert_index=True).insert_db()
 
-        if self.upload_to_db:
-            self._write_sql_output()
-
-        if self.upload_to_gcp:
-            self._upload_to_gcp()
+        if self.upload_to_db: self._write_sql_output()
+        if self.upload_to_gcp: self._upload_to_gcp()
 
 
 if __name__ == '__main__':
