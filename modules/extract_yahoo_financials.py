@@ -1,10 +1,4 @@
-from configs import database_configs as dbcfg
-from configs import prox_configs as pcfg
-from sqlalchemy import create_engine
-import requests
-import random
 import time
-import json
 import pandas as pd
 import numpy as np
 from util.helper_functions import dedup_list, create_log
@@ -63,6 +57,7 @@ class ReadYahooFinancialData:
         df_ttm = pd.concat(data_dic['TTM'], axis=1, sort=True).dropna(how='all')
 
         return df_12m, df_3m, df_ttm
+
 
 class YahooFinancial:
     BASE_URL = 'https://finance.yahoo.com/quote/{stock}/key-statistics?p={stock}'
