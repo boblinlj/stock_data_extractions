@@ -1,0 +1,56 @@
+{
+  "model_name": "model_1",
+  "required_risk_drivers": ["capacq","rdi","tparv21d","pcghi252d","marketCap","eg8q","tparv63d","pch63x0d"
+            ,"volatility60D","eyldtrl","eyld_fwd3yr","sg12q","tparv126d","ram126x21d","rp10D","eyld_16qavg"
+            ,"posqeps_12qcount","ram189x21d","ram252x21d","ram21x0d","fcfyld","fcfta","qsm_4q","volatility252D"],
+  "strategies": [
+    {
+      "name": "value_financial",
+      "strategy_filter": "df['gics_code'].str[0:2] == '40'",
+      "strategy_weights": 0.25,
+      "bucket_threshold": 0.125,
+      "factors": ["capacq", "marketCap", "eyldtrl", "eyld_fwd3yr", "eyld_16qavg"],
+      "weight": [1,1,1,1,1]
+    },
+    {
+      "name": "value_non_financial",
+      "strategy_filter": "df['gics_code'].str[0:2] != '40'",
+      "strategy_weights": 0.25,
+      "bucket_threshold": 0.125,
+      "factors": ["capacq", "marketCap", "eyld_fwd3yr", "eyld_16qavg", "fcfyld", "fcfta"],
+      "weight": [1,1,1,1,1,1]
+    },
+    {
+      "name": "growth",
+      "strategy_filter": "",
+      "strategy_weights": 0.25,
+      "bucket_threshold": 0.125,
+      "factors": ["rdi", "eg8q", "sg12q", "posqeps_12qcount"],
+      "weight": [1,1,1,1]
+    },
+    {
+      "name": "consensus",
+      "strategy_filter": "",
+      "strategy_weights": 0.25,
+      "bucket_threshold": 0.125,
+      "factors": ["tparv21d", "tparv63d", "tparv126d"],
+      "weight": [1,1,1]
+    },
+    {
+      "name": "pmo_regular",
+      "strategy_filter": "df['pcghi252d'] >= -0.2",
+      "strategy_weights": 0.25,
+      "bucket_threshold": 0.125,
+      "factors": ["pcghi252d", "pch63x0d", "ram126x21d", "ram189x21d", "ram252x21d", "qsm_4q", "rp10D", "ram21x0d", "volatility252D"],
+      "weight": [ 1,1,1,1,1,1,-1,-1,-1]
+    },
+    {
+      "name": "pmo_rebound",
+      "strategy_filter": "df['pcghi252d'] < -0.2",
+      "strategy_weights": 0.25,
+      "bucket_threshold": 0.125,
+      "factors": ["pcghi252d", "volatility60D", "rp10D", "ram21x0d"],
+      "weight": [ -1,-1,1,1 ]
+    }
+  ]
+}
