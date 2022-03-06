@@ -107,7 +107,7 @@ class YahooAPIParser(YahooWebParser):
 
 class FinvizParserPerPage(GetWebsite):
     def parse_for_df(self):
-        df = pd.read_html(self.response().text)[7]
+        df = pd.read_html(self.response().text)[8]
 
         if df.shape[1] == 70:
             df.columns = df.iloc[0]
@@ -123,7 +123,7 @@ class FinvizParserPerPage(GetWebsite):
 
     @property
     def no_of_population(self):
-        df = pd.read_html(self.response().text)[6]
+        df = pd.read_html(self.response().text)[7]
 
         if df.shape[0] == 1:
             return int(df[0][0].split(' ')[1])

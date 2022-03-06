@@ -21,11 +21,12 @@ class DatabaseManagement:
     except Exception as e:
         raise DatabaseManagementError(f'database cannot be created, {e}')
 
-    def __init__(self, data_df=None, table=None, key=None, where=None, sql=None, insert_index=False):
+    def __init__(self, data_df=None, table=None, key=None, where=None, date=None, sql=None, insert_index=False):
         self.data_df = data_df
         self.table = table
         self.key = key
         self.where = where
+        self.date = date
         self.sql = sql
         self.insert_index = insert_index
 
@@ -67,16 +68,14 @@ class DatabaseManagement:
             raise DatabaseManagementError(
                 f'cannot check population, due to critical variable missing (key, table, where)')
         else:
-            return pd.read_sql(con=self.cnn,
-                               sql=self._construct_sql())[self.key].to_list()
+            return pd.read_sql(con=self.cnn, sql=self._construct_sql())[self.key].to_list()
 
     def get_record(self):
         if all(var is None for var in [self.key, self.table, self.where]):
             raise DatabaseManagementError(
                 f'cannot run sql, due to critical variable missing (key, table, where)')
         else:
-            return pd.read_sql(con=self.cnn,
-                               sql=self._construct_sql())
+            return pd.read_sql(con=self.cnn, sql=self._construct_sql())
 
     def run_sql(self, sql=None, out_lst=False):
         if sql is None:

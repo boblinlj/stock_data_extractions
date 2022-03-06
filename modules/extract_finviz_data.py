@@ -17,7 +17,7 @@ class Finviz:
         self.updated_dt = updated_dt
         self.batch = batch
         self.existing_data = DatabaseManagement(key='ticker, updated_dt',
-                                                table='finviz',
+                                                table='finviz_tickers',
                                                 where=f"updated_dt = '{self.updated_dt}'").get_record()
         self.existing_data['updated_dt'] = pd.to_datetime(self.existing_data['updated_dt'])
         self.existing_data.set_index(['ticker'], inplace=True)
@@ -51,7 +51,6 @@ class Finviz:
         if stock_df.empty:
             self.logger.debug(f"data is empty for page={page_num}")
             return None
-
         try:
             DatabaseManagement(data_df=stock_df[fcfg.FINVIZ_TICKERS],
                                table='finviz_tickers',
@@ -80,6 +79,6 @@ class Finviz:
 
 if __name__ == '__main__':
     # test
-    finviz = Finviz('2022-01-04', batch=False, loggerFileName=None, use_tqdm=False)
-    finviz._process_each_page(1)
+    finviz = Finviz('2022-03-06', batch=False, loggerFileName=None, use_tqdm=True)
+    finviz.run()
     # finviz.run()

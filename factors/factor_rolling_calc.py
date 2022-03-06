@@ -54,8 +54,8 @@ def calculate_change_rate(input_df,
 
 
 def calculate_rolling_median(input_df,
-                              input_cols: list,
-                              number_of_periods=8):
+                             input_cols: list,
+                             number_of_periods=8):
     # calculate the median change rate of the trailing 12 months' data
     cols = ['4q_chg_' + col for col in input_cols]
     out_cols = []
@@ -77,8 +77,8 @@ def calculate_rolling_median(input_df,
 
 
 def calculate_rolling_stdev(input_df,
-                             input_cols: list,
-                             number_of_periods=8):
+                            input_cols: list,
+                            number_of_periods=8):
     # calculate the standard deviation change rate of the trailing 12 months' data
     cols = ['4q_chg_' + col for col in input_cols]
     out_cols = []
@@ -97,4 +97,3 @@ def calculate_rolling_stdev(input_df,
             stg_df[out_var] = np.nan
 
     return stg_df[out_cols]
-
