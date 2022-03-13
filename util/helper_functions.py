@@ -53,3 +53,7 @@ def create_log(loggerName=__name__, loggerFileName=None, disable_log=False):
         logger.disabled = True
 
     return logger
+
+
+def dedupe_dataframe(input_dataframe):
+    return input_dataframe.groupby(input_dataframe.index).first()

@@ -32,7 +32,7 @@ class write_insert_db:
                 """.format(self.table, self.updated_dt)
 
         df = pd.read_sql(sql=sql, con=self.cnn)
-        # print(df.head())
+        df.drop(columns='data_id', inplace=True)
 
         return df.to_dict(orient='records')
 
@@ -74,13 +74,7 @@ class write_insert_db:
 
 
 if __name__ == '__main__':
-    insert = write_insert_db('yahoo_quarterly_fundamental_test', '2021-09-11')
-    insert.run_INSERT()
-    #
-    # insert = write_insert_db('finviz_tickers', '2021-08-13')
-    # insert.run()
-    #
-    # insert = write_insert_db('yahoo_fundamental', '2021-08-13')
-    # insert.run()
+    insert = write_insert_db('yahoo_trailing_fundamental', '2022-02-04')
+    insert.run_insert()
 
 

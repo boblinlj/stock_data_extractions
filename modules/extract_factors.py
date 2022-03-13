@@ -6,15 +6,14 @@ from factors.pmo_factors import *
 from configs import job_configs as jcfg
 from util.helper_functions import create_log
 from util.parallel_process import parallel_process
-from datetime import date, timedelta
+from datetime import date
 import time
 import os
 from util.gcp_functions import upload_to_bucket
 from util.create_output_sqls import write_insert_db
 from util.get_stock_population import SetPopulation
 from util.database_management import DatabaseManagement, DatabaseManagementError
-from util.helper_functions import returnNotMatches
-
+from util.helper_functions import returnNotMatches, dedupe_dataframe
 
 pd.set_option('mode.chained_assignment', None)
 pd.set_option('display.max_columns', None)
@@ -22,7 +21,6 @@ pd.set_option('display.max_columns', None)
 
 class FactorCalculationError(Exception):
     pass
-
 
 class CalculateFactors:
     market = '^GSPC'  # use sp500 as the market index
@@ -53,11 +51,13 @@ class CalculateFactors:
         if not self.price_f.empty:
             self.price_f.index.names = ['asOfDate']
             self.price_f.drop(columns=['ticker'], axis=1, inplace=True)
+            self.price_f = dedupe_dataframe(self.price_f)
 
         self.market_f = YahooPrice(self.market, start_dt, updated_dt, disable_log=True).get_basic_stock_price()
         if not self.market_f.empty:
             self.market_f.drop(columns=['ticker'], axis=1, inplace=True)
             self.market_f.index.names = ['asOfDate']
+            self.market_f = dedupe_dataframe(self.market_f)
 
         # read time dimension data
         self.time_d = DatabaseManagement(table='date_d',
@@ -110,7 +110,7 @@ class CalculateFactors:
         data_frames = [self.quarterly_data, df1, df2, df3, df4, df5, df6]
 
         df_from_step1 = pd.concat(data_frames, axis=1)
-        df_from_step1 = df_from_step1.groupby(df_from_step1.index).first()
+        df_from_step1 = dedupe_dataframe(df_from_step1)
         # *************************************END: STEP ONE********************************************************
 
         # ****************************************STEP TWO**********************************************************
