@@ -132,3 +132,7 @@ class FinvizParserPerPage(GetWebsite):
 
     def parse(self):
         return self.parse_for_df()
+
+
+if __name__ == "__main__":
+    pass
