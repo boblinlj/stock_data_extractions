@@ -13,8 +13,8 @@ def DailyExtractions():
 
     create_log(loggerName='daily_job', loggerFileName=loggerFileName)
 
-    # runtime = datetime.datetime.today().date() - datetime.timedelta(days = 3)
-    runtime = datetime.datetime.today().date()
+    runtime = datetime.datetime.today().date() - datetime.timedelta(days = 2)
+    # runtime = datetime.datetime.today().date()
     print(runtime)
     print("*" * 30)
     print("Extracting Finviz")
@@ -31,6 +31,7 @@ def DailyExtractions():
     print("Start to generating output files")
     print("*" * 30)
     for sql_out in outputs:
+        print(sql_out)
         write_insert_db(sql_out, runtime).run_insert()
 
     print("Start Uploading Files to GCP")

@@ -1,5 +1,6 @@
 import datetime
 import logging
+from logging.handlers import MemoryHandler
 import os
 
 import numpy as np
@@ -53,6 +54,31 @@ def create_log(loggerName=__name__, loggerFileName=None, disable_log=False):
         logger.disabled = True
 
     return logger
+
+
+def log_with_buffer(logger, target_handler=None, flush_level=None, capacity=None):
+    if target_handler is None:
+        target_handler = logging.StreamHandler()
+    if flush_level is None:
+        flush_level = logging.ERROR
+    if capacity is None:
+        capacity = 100
+    handler = MemoryHandler(capacity, flushLevel=flush_level, target=target_handler)
+
+    def decorator(fn):
+        def wrapper(*args, **kwargs):
+            logger.addHandler(handler)
+            try:
+                return fn(*args, **kwargs)
+            except Exception:
+                logger.exception('call failed')
+                raise
+            finally:
+                super(MemoryHandler, handler).flush()
+                logger.removeHandler(handler)
+        return wrapper
+
+    return decorator
 
 
 def dedupe_dataframe(input_dataframe):

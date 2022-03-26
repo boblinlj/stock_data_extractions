@@ -1,8 +1,9 @@
 from util.request_website import YahooWebParser
 from util.helper_functions import create_log
 from util.parallel_process import parallel_process
+from util.database_management import DatabaseManagement
 import pandas as pd
-
+from datetime import date
 
 class ExtractScreenerError(Exception):
     pass
@@ -12,9 +13,11 @@ class ExtractScreener:
     keep_col = ['symbol', 'shortName', 'longName', 'quoteType', 'currency']
     base_url = "https://finance.yahoo.com/screener/unsaved/{token}?count=100&offset={offset}"
 
-    def __init__(self, yahoo_screener_token, proxy=True, loggerFileName=None):
+    def __init__(self, yahoo_screener_token, updated_dt, proxy=True, loggerFileName=None):
         self.token = yahoo_screener_token
+        self.updated_dt = updated_dt
         self.proxy = proxy
+        # output_df is used to receive results
         self.output_df = pd.DataFrame()
         self.loggerFileName = loggerFileName
         self.logger = create_log(loggerName=f'ExtractScreener-{self.token}', loggerFileName=self.loggerFileName)
@@ -31,6 +34,7 @@ class ExtractScreener:
             total = js['context']['dispatcher']['stores']['ScreenerResultsStore']['results']['total']
             if len(rows) > 0:
                 df = pd.DataFrame.from_records(rows)[self.keep_col]
+                df['offset'] = offset
                 if df.empty:
                     return total, False
                 else:
@@ -50,7 +54,7 @@ class ExtractScreener:
 
         self.logger.info(f'Extraction successful - {self.output_df.shape[0]} records extracted')
 
-    def loop_all_pages_concurrent(self):
+    def loop_all_pages_concurrently(self):
         total, temp_df = self.parse_results_from_each_page(0)
         start = 0
         end = (int(total / 100) + 1) * 100
@@ -58,11 +62,21 @@ class ExtractScreener:
         parallel_process(offsets, self.parse_results_from_each_page, 10, use_tqdm=True)
 
     def parse(self):
-        self.loop_all_pages_concurrent()
-        self.output_df.to_csv(f'{self.token}.csv', index=False)
+        # self.loop_all_pages_concurrently()
+        # print(self.output_df.to_csv(f"{self.token}.csv"))
+
+        self.output_df = pd.read_csv(f'{token}.csv')
+        self.output_df.rename(columns={'symbol': 'ticker'}, inplace=True)
+        self.output_df['updated_dt'] = self.updated_dt
+        DatabaseManagement(data_df=self.output_df,
+                           table='yahoo_universe',
+                           insert_index=False).insert_db()
 
 
 if __name__ == "__main__":
-    token = '9b795d5d-1520-4161-9d19-71b2c5161596'
-    obj = ExtractScreener(token)
+    token = 'b17c19ef-f608-4422-ac7b-652b021e9c7c'
+    today = date.today()
+    logfile_name = f"{token}_{today}.log"
+    # print(logfile_name)
+    obj = ExtractScreener(token, updated_dt=today, loggerFileName=logfile_name)
     print(obj.parse())

@@ -1,4 +1,4 @@
-WORKER = 20
+WORKER = 30
 JOB_ROOT = "C:\\Users\\Bob Lin\\SynologyDrive\\Python Projects\\yahoo_spider\\stock_data_extractions\\"
 LOG_FORMATTER = '%(levelname)s:%(name)s:%(message)s'
 LOG_LVL = 'logging.DEBUG'
