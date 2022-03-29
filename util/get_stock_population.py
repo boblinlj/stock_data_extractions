@@ -103,7 +103,9 @@ class SetPopulation:
                'ALL': self.saved_stock_pop.all_stock(),
                'YAHOO_SCREENER': self.saved_stock_pop.yahoo_screener(),
                'STOCK+AARON': self.saved_stock_pop.all_stocks_wo_ETF_RIET(),
-               'YHAOO_STOCK_ALL': self.saved_stock_pop.get_yahoo_ticker_from_screener('EQUITY'),
+               'YHAOO_STOCK_ALL': list(set(self.saved_stock_pop.get_yahoo_ticker_from_screener('EQUITY')
+                                           + self.saved_stock_pop.get_stock_list_from_arron())
+                                       ),
                'YHAOO_ETF_ALL': self.saved_stock_pop.get_yahoo_ticker_from_screener('ETF')
                }
         if pop.get(self.user_pop) is not None:

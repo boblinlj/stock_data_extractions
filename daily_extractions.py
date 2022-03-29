@@ -13,7 +13,7 @@ def DailyExtractions():
 
     create_log(loggerName='daily_job', loggerFileName=loggerFileName)
 
-    runtime = datetime.datetime.today().date() - datetime.timedelta(days = 2)
+    runtime = datetime.datetime.today().date() - datetime.timedelta(days=2)
     # runtime = datetime.datetime.today().date()
     print(runtime)
     print("*" * 30)

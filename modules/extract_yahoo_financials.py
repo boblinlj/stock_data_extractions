@@ -114,6 +114,7 @@ class YahooFinancial:
 
     def _extract_api(self, stock):
         url = self._url_builder_fundamentals().format(stock=stock)
+        print(url)
         data = None
         for trail in range(5):
             data = YahooAPIParser(url=url).parse()
@@ -199,6 +200,5 @@ if __name__ == '__main__':
                             targeted_population='STOCK+AARON',
                             batch=True,
                             loggerFileName=None)
-    # spider._existing_dt()
-    # spider._extract_each_stock('ABC')
-    spider.run()
+    spider._extract_api('AAPL')
+    # spider.run()
