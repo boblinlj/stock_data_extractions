@@ -1,15 +1,20 @@
+import sys
 import time
 import pandas as pd
 import numpy as np
 from util.helper_functions import dedup_list, create_log
-import os
+import configs.job_configs as jcfg
 import datetime
-from util.parallel_process import *
+from util.parallel_process import parallel_process
 from util.request_website import YahooAPIParser
 from util.database_management import DatabaseManagement, DatabaseManagementError
 from util.get_stock_population import SetPopulation
 
 pd.set_option('display.max_columns', None)
+
+
+class ExtractionError(Exception):
+    pass
 
 
 class ReadYahooFinancialData:
@@ -60,24 +65,19 @@ class ReadYahooFinancialData:
 
 
 class YahooFinancial:
-    BASE_URL = 'https://finance.yahoo.com/quote/{stock}/key-statistics?p={stock}'
-
     workers = jcfg.WORKER
-
-    df_for_elements = pd.read_csv(os.path.join(jcfg.JOB_ROOT, 'inputs', 'yahoo_financial_fundamental.csv'))
-
+    BASE_URL = 'https://query1.finance.yahoo.com'
+    df_for_elements = DatabaseManagement(sql="""SELECT type, freq, data
+                                            FROM yahoo_financial_statement_data_control""").read_to_df()
     all_elements = df_for_elements.data.values.tolist()
-
     no_of_requests = 0
     no_of_db_entries = 0
-
     table_lookup = {'yahoo_quarterly_fundamental': 'quarter',
                     'yahoo_annual_fundamental': 'annual',
                     'yahoo_trailing_fundamental': 'ttm'}
-
     failed_extract = []
 
-    def __init__(self, updated_dt, targeted_population,batch=False, loggerFileName=None, use_tqdm=True):
+    def __init__(self, updated_dt, targeted_population, batch=False, loggerFileName=None, use_tqdm=True):
         self.updated_dt = updated_dt
         self.targeted_population = targeted_population
         self.loggerFileName = loggerFileName
@@ -91,8 +91,8 @@ class YahooFinancial:
                                          where="1=1").get_record()
 
         quarter_data = DatabaseManagement(table='yahoo_quarterly_fundamental',
-                                         key="ticker, asOfDate, 'quarter' as type",
-                                         where="1=1").get_record()
+                                          key="ticker, asOfDate, 'quarter' as type",
+                                          where="1=1").get_record()
 
         ttm_data = DatabaseManagement(table='yahoo_trailing_fundamental',
                                       key="ticker, asOfDate, 'ttm' as type",
@@ -104,17 +104,14 @@ class YahooFinancial:
     def _url_builder_fundamentals(self):
 
         tdk = str(int(time.mktime(datetime.datetime.now().timetuple())))
-        BASE_URL = 'https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{stock}?symbol={stock}&type='
-        URL_TAIL = '&merge=false&period1=493590046&period2=' + tdk
-        url = ''
-        for element in self.all_elements:
-            url = url + element + '%2C'
+        yahoo_fundamental_url = '/ws/fundamentals-timeseries/v1/finance/timeseries/{stock}?symbol={stock}&type='
+        yahoo_fundamental_url_tail = '&merge=false&period1=493590046&period2=' + tdk
+        elements = '%2C'.join(self.all_elements)
 
-        return BASE_URL + url + URL_TAIL
+        return self.BASE_URL + yahoo_fundamental_url + elements + yahoo_fundamental_url_tail
 
     def _extract_api(self, stock):
         url = self._url_builder_fundamentals().format(stock=stock)
-        print(url)
         data = None
         for trail in range(5):
             data = YahooAPIParser(url=url).parse()
@@ -157,42 +154,35 @@ class YahooFinancial:
         df_after_check = df_to_check[~df_to_check.index.isin(df_existing_data.index)]
         return df_after_check
 
+    def run_single_extraction(self, stock_list: list):
+        sys.stderr.write(f"{len(stock_list)} stocks to be extracted")
+        if self.batch:
+            parallel_process(stock_list, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
+        else:
+            parallel_process(stock_list, self._extract_each_stock, n_jobs=1)
+        self.failed_extract = dedup_list(self.failed_extract)
+        sys.stderr.write(f"{len(self.failed_extract)} out of {len(stock_list)} succeeded extractions")
+
     def run(self):
         start = time.time()
         self._existing_dt()
 
         stocks = SetPopulation(user_pop=self.targeted_population).setPop()
-        # stocks = self.stock_lst.all_stocks_wo_ETF_RIET()[:]
 
-        self.logger.info("-------------First Extract Starts-------------")
-        self.logger.info("{} Stocks to be extracted".format(len(stocks)))
-        if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
-        else:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
-        self.logger.info(self.failed_extract)
+        sys.stderr.write("-------------First Extract Starts-------------")
+        self.run_single_extraction(stock_list=stocks)
 
-        self.logger.info("-------------Second Extract Starts-------------")
-        stocks = dedup_list(self.failed_extract)
+        sys.stderr.write("-------------Second Extract Starts-------------")
+        self.run_single_extraction(stock_list=self.failed_extract)
         self.failed_extract = []
-        if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
-        else:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
-        self.logger.info(self.failed_extract)
 
-        self.logger.info("-------------Third Extract Starts-------------")
-        stocks = dedup_list(self.failed_extract)
+        sys.stderr.write("-------------Third Extract Starts-------------")
+        self.run_single_extraction(stock_list=self.failed_extract)
         self.failed_extract = []
-        if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
-        else:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
-        self.logger.info(self.failed_extract)
 
         end = time.time()
-        self.logger.info("{} requests, took {} minutes".format(self.no_of_requests, round((end - start) / 60)))
-        self.logger.info("Number of Data Base Enters = {}".format(self.no_of_db_entries))
+        self.logger.info(f"{self.no_of_requests} requests, took {round((end - start) / 60)} minutes")
+        self.logger.info(f"Number of Data Base Enters = {self.no_of_db_entries}")
 
 
 if __name__ == '__main__':
@@ -200,5 +190,5 @@ if __name__ == '__main__':
                             targeted_population='STOCK+AARON',
                             batch=True,
                             loggerFileName=None)
-    spider._extract_api('AAPL')
+    print(spider._extract_api('AAPL'))
     # spider.run()

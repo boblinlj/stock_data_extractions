@@ -1,15 +1,17 @@
-import sys
-import jobs
+import pandas as pd
+from util.database_management import DatabaseManagement
+
+# df = pd.read_csv('inputs/yahoo_financial_fundamental.csv')
+#
+# print(df)
+#
+# DatabaseManagement(data_df=df, table='yahoo_financial_statement_data_control', ).insert_db()
+
+df = DatabaseManagement(sql="""
+                            SELECT type, freq, data
+                            FROM yahoo_financial_statement_data_control
+                        """).read_to_df()
+
+print(df)
 
 
-def run_jobs(job_name):
-    jobs = {'JOB01': 'daily_extractions.py',
-            'JOB02': 'weekly_financial_statement.py',
-            'JOB03': 'weekly_yahoo_conesus.py',
-            'JOB04': 'weekly_price_job.py',
-            'JOB05': 'weekly_factor_job.py'}
-
-    if job_name in jobs.keys():
-        jobs[job_name]
-    else:
-        pass
