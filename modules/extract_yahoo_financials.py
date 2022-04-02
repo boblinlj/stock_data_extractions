@@ -77,9 +77,9 @@ class YahooFinancial:
                     'yahoo_trailing_fundamental': 'ttm'}
     failed_extract = []
 
-    def __init__(self, updated_dt, targeted_population, batch=False, loggerFileName=None, use_tqdm=True):
+    def __init__(self, updated_dt, targeted_pop, batch=False, loggerFileName=None, use_tqdm=True):
         self.updated_dt = updated_dt
-        self.targeted_population = targeted_population
+        self.targeted_population = targeted_pop
         self.loggerFileName = loggerFileName
         self.batch = batch
         self.logger = create_log(loggerName='YahooFinancialStatements', loggerFileName=self.loggerFileName)
@@ -112,11 +112,7 @@ class YahooFinancial:
 
     def _extract_api(self, stock):
         url = self._url_builder_fundamentals().format(stock=stock)
-        data = None
-        for trail in range(5):
-            data = YahooAPIParser(url=url).parse()
-            if data is not None:
-                break
+        data = YahooAPIParser(url=url).parse()
 
         if data is None:
             self.logger.debug(f'unable to get yahoo API data for stock={stock}')
@@ -154,7 +150,7 @@ class YahooFinancial:
         df_after_check = df_to_check[~df_to_check.index.isin(df_existing_data.index)]
         return df_after_check
 
-    def run_single_extraction(self, stock_list: list):
+    def _run_single_extraction(self, stock_list: list):
         sys.stderr.write(f"{len(stock_list)} stocks to be extracted")
         if self.batch:
             parallel_process(stock_list, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
@@ -170,14 +166,14 @@ class YahooFinancial:
         stocks = SetPopulation(user_pop=self.targeted_population).setPop()
 
         sys.stderr.write("-------------First Extract Starts-------------")
-        self.run_single_extraction(stock_list=stocks)
+        self._run_single_extraction(stock_list=stocks)
 
         sys.stderr.write("-------------Second Extract Starts-------------")
-        self.run_single_extraction(stock_list=self.failed_extract)
+        self._run_single_extraction(stock_list=self.failed_extract)
         self.failed_extract = []
 
         sys.stderr.write("-------------Third Extract Starts-------------")
-        self.run_single_extraction(stock_list=self.failed_extract)
+        self._run_single_extraction(stock_list=self.failed_extract)
         self.failed_extract = []
 
         end = time.time()

@@ -1,46 +1,34 @@
-from modules.extract_finviz_data import Finviz
+import sys
 from modules.extract_yahoo_stats import YahooStats
-from util.create_output_sqls import write_insert_db
 import datetime
-from util.gcp_functions import upload_to_bucket
-from configs import job_configs as jcfg
-import os
+from util.gcp_functions import upload_sql_to_GCP_cloud_storage
 from util.helper_functions import create_log
 
-
-def DailyExtractions():
+def DailyExtractions(runtime):
     loggerFileName = f"daily_job_{datetime.date.today().strftime('%Y%m%d')}.log"
 
     create_log(loggerName='daily_job', loggerFileName=loggerFileName)
 
-    runtime = datetime.datetime.today().date() - datetime.timedelta(days=2)
-    # runtime = datetime.datetime.today().date()
-    print(runtime)
-    print("*" * 30)
-    print("Extracting Finviz")
-    finviz = Finviz(runtime, batch=False, loggerFileName=loggerFileName, use_tqdm=False)
-    finviz.run()
-    print("*" * 30)
-    print("Extracting Yahoo Statistics")
-    spider2 = YahooStats(runtime, targeted_pop='ALL', batch=True, loggerFileName=loggerFileName, use_tqdm=False)
+    sys.stderr.write(f"{'*'*80}\n")
+    sys.stderr.write(f'Daily job started for {runtime}\n')
+    sys.stderr.write(f"{'-'*80}\n")
+    sys.stderr.write("Extracting Yahoo Statistics\n")
+    sys.stderr.write('This job will population tables: \n'
+                     '    --`yahoo_fundamental`\n')
+    # Call the job module
+    spider2 = YahooStats(runtime,
+                         targeted_pop='YAHOO_STOCK_ALL',
+                         batch=True,
+                         loggerFileName=loggerFileName,
+                         use_tqdm=False)
     spider2.run()
-    print("*" * 30)
 
-    outputs = ['finviz_screener', 'finviz_tickers', 'yahoo_fundamental', 'yahoo_price', 'yahoo_consensus_price']
-    # generate sql script for upload
-    print("Start to generating output files")
-    print("*" * 30)
-    for sql_out in outputs:
-        print(sql_out)
-        write_insert_db(sql_out, runtime).run_insert()
+    sys.stderr.write(f"Extracting Job is Completed, log is produced as {loggerFileName}\n")
+    sys.stderr.write(f"{'*'*80}\n")
 
-    print("Start Uploading Files to GCP")
-    items = [f'insert_{file}_{runtime}.sql' for file in outputs]
-    for each_item in items:
-        if upload_to_bucket(each_item, os.path.join(jcfg.JOB_ROOT, "sql_outputs", each_item), 'stock_data_busket2'):
-            print("Successful: GCP upload successful for file = {}".format(each_item))
-        else:
-            print("Failed: GCP upload failed for file = {}".format(each_item))
+    upload_sql_to_GCP_cloud_storage(['yahoo_fundamental'],
+                                    runtime)
 
 
-DailyExtractions()
+runtime = datetime.datetime.today().date()
+DailyExtractions(runtime)
