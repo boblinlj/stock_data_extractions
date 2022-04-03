@@ -1,17 +1,15 @@
 from configs import yahoo_configs as ycfg
+from configs import job_configs as jcfg
 from datetime import date
 import json
 import pandas as pd
 import numpy as np
 import time
-from util.get_stock_population import SetPopulation
 from util.helper_functions import create_log
 from util.helper_functions import unix_to_regular_time
 from util.helper_functions import dedup_list
 from util.helper_functions import returnNotMatches
-from util.parallel_process import *
 from util.request_website import YahooAPIParser
-from util.database_management import DatabaseManagement, DatabaseManagementError
 
 
 class YahooETFExtractionError(Exception):
@@ -141,17 +139,29 @@ class YahooETF:
         # read data from Yahoo API
         readData = ReadYahooETFStatData(data)
         annualTotalReturns = readData.annualTotalReturns()
-        trailingReturns = readData.trailingReturns()
-        riskOverviewStatistics = readData.riskOverviewStatistics()
-        topHoldings = readData.topHoldings()
-        price = readData.price()
+        annualTotalReturns['ticker'] = stock
+        annualTotalReturns['updated_dt'] = self.updated_dt
 
-        print(annualTotalReturns)
+        trailingReturns = readData.trailingReturns()
+        trailingReturns['ticker'] = stock
+        trailingReturns['updated_dt'] = self.updated_dt
+
+        riskOverviewStatistics = readData.riskOverviewStatistics()
+
+        topHoldings = readData.topHoldings()
+        topHoldings['ticker'] = stock
+        topHoldings['updated_dt'] = self.updated_dt
+
+        price = readData.price()
+        price['ticker'] = stock
+        price['updated_dt'] = self.updated_dt
+
+        print(riskOverviewStatistics)
 
 
 if __name__ == '__main__':
     obj = YahooETF('2022-04-02', targeted_pop='YAHOO_ETF_ALL')
-    obj._get_etf_statistics('SPY')
+    obj._get_etf_statistics('BND')
 
 
 
