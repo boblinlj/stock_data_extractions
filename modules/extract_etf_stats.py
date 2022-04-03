@@ -138,9 +138,20 @@ class YahooETF:
 
     def _get_etf_statistics(self, stock):
         data = YahooAPIParser(url=self.BASE_URL.format(stock=stock)).parse()
-        df = ReadYahooETFStatData(data).price()
+        # read data from Yahoo API
+        readData = ReadYahooETFStatData(data)
+        annualTotalReturns = readData.annualTotalReturns()
+        trailingReturns = readData.trailingReturns()
+        riskOverviewStatistics = readData.riskOverviewStatistics()
+        topHoldings = readData.topHoldings()
+        price = readData.price()
+
+        print(annualTotalReturns)
 
 
 if __name__ == '__main__':
     obj = YahooETF('2022-04-02', targeted_pop='YAHOO_ETF_ALL')
     obj._get_etf_statistics('SPY')
+
+
+

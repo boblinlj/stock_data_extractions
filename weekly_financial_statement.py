@@ -23,7 +23,7 @@ def DailyExtractions(runtime):
                              targeted_pop='YAHOO_STOCK_ALL',
                              batch=True,
                              loggerFileName=loggerFileName,
-                             use_tqdm=False)
+                             use_tqdm=True)
     spider2.run()
 
     sys.stderr.write(f"Extracting Job is Completed, log is produced as {loggerFileName}\n")
