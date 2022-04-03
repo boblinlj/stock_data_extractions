@@ -138,6 +138,7 @@ class YahooFinancial:
         df_to_insert = self._check_existing_entries_financial(df_to_check=df_to_insert, stock=stock, table=table)
         try:
             DatabaseManagement(df_to_insert, table=table, insert_index=True).insert_db()
+            self.logger.info(f"{stock} data entered to {table} successfully")
         except DatabaseManagementError as e:
             self.logger.debug(f"Failed to insert data for stock={stock} as {e}")
 
@@ -183,7 +184,7 @@ class YahooFinancial:
 
 if __name__ == '__main__':
     spider = YahooFinancial(datetime.datetime.today().date(),
-                            targeted_population='STOCK+AARON',
+                            targeted_pop='STOCK+AARON',
                             batch=True,
                             loggerFileName=None)
     print(spider._extract_api('AAPL'))

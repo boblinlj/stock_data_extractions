@@ -38,7 +38,7 @@ def check_existing_entries(df_to_check, existing_df):
 
 def create_log(loggerName=__name__, loggerFileName=None, disable_log=False):
     logger = logging.getLogger(loggerName)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     formatter = logging.Formatter(jcfg.LOG_FORMATTER)
 
     if loggerFileName is None:

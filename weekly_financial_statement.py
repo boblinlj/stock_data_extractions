@@ -35,6 +35,6 @@ def DailyExtractions(runtime):
                                     runtime)
 
 
-runtime = datetime.datetime.today().date()
+runtime = datetime.datetime.today().date() - datetime.timedelta(days=1)
 DailyExtractions(runtime)
 
