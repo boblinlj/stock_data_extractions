@@ -1,12 +1,7 @@
-from configs import yahoo_configs as ycfg
+import sys
 from configs import job_configs as jcfg
-from datetime import date
-import json
 import pandas as pd
-import numpy as np
-import time
-from util.helper_functions import create_log
-from util.helper_functions import unix_to_regular_time
+from util.helper_functions import create_log,unix_to_regular_time, dedup_list
 from util.get_stock_population import SetPopulation
 from util.parallel_process import parallel_process
 from util.request_website import YahooAPIParser
@@ -158,7 +153,6 @@ class YahooETF:
     yahoo_module = ['topHoldings', 'fundPerformance', 'price']
     BASE_URL = 'https://query2.finance.yahoo.com/v10/finance/quoteSummary/{stock}?modules=' + '%2C'.join(yahoo_module)
     workers = jcfg.WORKER
-    failed_extract = []
 
     def __init__(self, updated_dt, targeted_pop, batch=False, loggerFileName=None, use_tqdm=True):
         self.loggerFileName = loggerFileName
@@ -167,13 +161,15 @@ class YahooETF:
         self.batch = batch
         self.logger = create_log(loggerName='YahooETFStats', loggerFileName=self.loggerFileName)
         self.use_tqdm = use_tqdm
+        # list to store failed extractions
+        self.failed = []
 
     @staticmethod
-    def _check_existing(stock, table, df_to_check):
+    def _check_existing(stock, updated_dt, table, df_to_check):
         sql = f"""
                 SELECT *
                 FROM {table}
-                WHERE ticker = '{stock}'
+                WHERE ticker = '{stock}' and updated_dt = '{updated_dt}'
             """
         if df_to_check.empty:
             return df_to_check
@@ -197,20 +193,8 @@ class YahooETF:
         readData = ReadYahooETFStatData(data)
 
         try:
-            annualTotalReturns = readData.annualTotalReturns()
-            annualTotalReturns = self._check_existing(stock, 'yahoo_etf_annual_returns', annualTotalReturns)
-            if not annualTotalReturns.empty:
-                annualTotalReturns['ticker'] = stock
-                annualTotalReturns['updated_dt'] = self.updated_dt
-                DatabaseManagement(data_df=annualTotalReturns,
-                                   table='yahoo_etf_annual_returns',
-                                   insert_index=False).insert_db()
-        except YahooETFExtractionError:
-            self.logger.debug(f"{stock}: annualTotalReturns extraction failed")
-
-        try:
             trailingReturns = readData.trailingReturns()
-            trailingReturns = self._check_existing(stock, 'yahoo_etf_trailing_returns', trailingReturns)
+            trailingReturns = self._check_existing(stock, self.updated_dt, 'yahoo_etf_trailing_returns', trailingReturns)
             if not trailingReturns.empty:
                 trailingReturns['ticker'] = stock
                 trailingReturns['updated_dt'] = self.updated_dt
@@ -220,10 +204,11 @@ class YahooETF:
                                    insert_index=False).insert_db()
         except YahooETFExtractionError:
             self.logger.debug(f"{stock}: trailingReturns extraction failed")
+            self.failed.append(stock)
 
         try:
             riskOverviewStatistics = readData.riskOverviewStatistics()
-            riskOverviewStatistics = self._check_existing(stock, 'yahoo_etf_3y5y10y_risk', riskOverviewStatistics)
+            riskOverviewStatistics = self._check_existing(stock, self.updated_dt, 'yahoo_etf_3y5y10y_risk', riskOverviewStatistics)
             if not riskOverviewStatistics.empty:
                 riskOverviewStatistics['ticker'] = stock
                 riskOverviewStatistics['updated_dt'] = self.updated_dt
@@ -232,10 +217,11 @@ class YahooETF:
                                    insert_index=False).insert_db()
         except YahooETFExtractionError:
             self.logger.debug(f"{stock}: riskOverviewStatistics extraction failed")
+            self.failed.append(stock)
 
         try:
             topHoldings = readData.topHoldings()
-            topHoldings = self._check_existing(stock, 'yahoo_etf_holdings', topHoldings)
+            topHoldings = self._check_existing(stock, self.updated_dt, 'yahoo_etf_holdings', topHoldings)
             if not topHoldings.empty:
                 topHoldings['ticker'] = stock
                 topHoldings['updated_dt'] = self.updated_dt
@@ -244,10 +230,11 @@ class YahooETF:
                                    insert_index=False).insert_db()
         except YahooETFExtractionError:
             self.logger.debug(f"{stock}: topHoldings extraction failed")
+            self.failed.append(stock)
 
         try:
             price = readData.price()
-            price = self._check_existing(stock, 'yahoo_etf_prices', price)
+            price = self._check_existing(stock, self.updated_dt, 'yahoo_etf_prices', price)
             if not price.empty:
                 price['ticker'] = stock
                 price['updated_dt'] = self.updated_dt
@@ -256,9 +243,29 @@ class YahooETF:
                                    insert_index=False).insert_db()
         except YahooETFExtractionError:
             self.logger.debug(f"{stock}: price extraction failed")
+            self.failed.append(stock)
+
+        self.logger.info(f"{stock}: processed successfully")
 
     def run(self):
+        self.logger.info(f"{'*'*40}1st Run{'*'*40}")
         stocks = SetPopulation(self.targeted_pop).setPop()
+        if self.batch:
+            parallel_process(stocks, self._get_etf_statistics, n_jobs=self.workers, use_tqdm=self.use_tqdm)
+        else:
+            parallel_process(stocks, self._get_etf_statistics, n_jobs=1, use_tqdm=self.use_tqdm)
+
+        self.logger.info(f"{'*'*40}2rd Run{'*'*40}")
+        stocks = dedup_list(self.failed)
+        self.failed = []
+        if self.batch:
+            parallel_process(stocks, self._get_etf_statistics, n_jobs=self.workers, use_tqdm=self.use_tqdm)
+        else:
+            parallel_process(stocks, self._get_etf_statistics, n_jobs=1, use_tqdm=self.use_tqdm)
+
+        self.logger.info(f"{'*'*40}3rd Run{'*'*40}")
+        stocks = dedup_list(self.failed)
+        self.failed = []
         if self.batch:
             parallel_process(stocks, self._get_etf_statistics, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
@@ -266,7 +273,7 @@ class YahooETF:
 
 
 if __name__ == '__main__':
-    obj = YahooETF('2022-04-08',
+    obj = YahooETF('2022-04-09',
                    targeted_pop='YAHOO_ETF_ALL',
                    batch=True,
                    loggerFileName=None,
