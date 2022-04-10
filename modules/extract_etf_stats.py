@@ -7,9 +7,10 @@ import numpy as np
 import time
 from util.helper_functions import create_log
 from util.helper_functions import unix_to_regular_time
-from util.helper_functions import dedup_list
-from util.helper_functions import returnNotMatches
+from util.get_stock_population import SetPopulation
+from util.parallel_process import parallel_process
 from util.request_website import YahooAPIParser
+from util.database_management import DatabaseManagement
 
 
 class YahooETFExtractionError(Exception):
@@ -28,6 +29,13 @@ class ReadYahooETFStatData:
     def __init__(self, js):
         self.js = js
 
+    def preliminary_check(self):
+        try:
+            var1 = self.js['quoteSummary']['result'][0]['fundPerformance']
+            return True
+        except KeyError:
+            return False
+
     def annualTotalReturns(self):
         try:
             etf_r = self.js['quoteSummary']['result'][0]['fundPerformance']['annualTotalReturns']['returns']
@@ -42,6 +50,7 @@ class ReadYahooETFStatData:
             bk_r_df.drop(columns=['annualValue'], inplace=True)
 
             final_df = etf_r_df.join(bk_r_df, how='left')
+            final_df.reset_index(inplace=True)
 
             return final_df
 
@@ -53,7 +62,7 @@ class ReadYahooETFStatData:
             etf_ttm_r = self.js['quoteSummary']['result'][0]['fundPerformance']['trailingReturns']
             etf_ttm_r_df = pd.DataFrame.from_records(etf_ttm_r).loc['raw']
             etf_ttm_r_df['asOfDate'] = unix_to_regular_time(etf_ttm_r_df['asOfDate'])
-            return etf_ttm_r_df
+            return etf_ttm_r_df.to_frame().transpose()
 
         except KeyError as e:
             raise YahooETFExtractionError(f"Key({e}) does not exist")
@@ -65,7 +74,25 @@ class ReadYahooETFStatData:
             for col in etf_risk_df.columns:
                 if col != 'year':
                     etf_risk_df[col] = etf_risk_df[col].apply(lambda x: x.get('raw'))
-            return etf_risk_df
+
+            df_5y = etf_risk_df.loc[etf_risk_df['year'] == '5y'][:]
+            df_5y.columns = [x + '_5y' for x in df_5y.columns]
+            df_5y.reset_index(inplace=True)
+            df_5y.drop(columns=['year_5y', 'index'], inplace=True)
+
+            df_3y = etf_risk_df.loc[etf_risk_df['year'] == '3y'][:]
+            df_3y.columns = [x + '_3y' for x in df_3y.columns]
+            df_3y.reset_index(inplace=True)
+            df_3y.drop(columns=['year_3y', 'index'], inplace=True)
+
+            df_10y = etf_risk_df.loc[etf_risk_df['year'] == '10y'][:]
+            df_10y.columns = [x + '_10y' for x in df_10y.columns]
+            df_10y.reset_index(inplace=True)
+            df_10y.drop(columns=['year_10y', 'index'], inplace=True)
+
+            output_df = pd.concat([df_3y, df_5y, df_10y], axis=1, ignore_index=False)
+
+            return output_df
 
         except KeyError as e:
             raise YahooETFExtractionError(f"Key({e}) does not exist")
@@ -77,12 +104,12 @@ class ReadYahooETFStatData:
             sector = {}
             for i in etf_holdings.get('sectorWeightings'):
                 for key, item in i.items():
-                    sector[key] = item.get('raw')
+                    sector['sector_weight_' + key] = item.get('raw')
 
             bond_rating = {}
             for i in etf_holdings.get('bondRatings'):
                 for key, item in i.items():
-                    bond_rating[key] = item.get('raw')
+                    bond_rating['bond_rating_' + key] = item.get('raw')
 
             holding_stats = {
                 'cashPosition': etf_holdings['cashPosition'].get('raw'),
@@ -91,14 +118,14 @@ class ReadYahooETFStatData:
                 'otherPosition': etf_holdings['otherPosition'].get('raw'),
                 'preferredPosition': etf_holdings['preferredPosition'].get('raw'),
                 'convertiblePosition': etf_holdings['convertiblePosition'].get('raw'),
-                'priceToEarnings': etf_holdings['equityHoldings']['priceToEarnings'].get('raw'),
-                'priceToBook': etf_holdings['equityHoldings']['priceToBook'].get('raw'),
-                'priceToSales': etf_holdings['equityHoldings']['priceToSales'].get('raw'),
-                'priceToCashflow': etf_holdings['equityHoldings']['priceToCashflow'].get('raw'),
-                'threeYearEarningsGrowth': etf_holdings['equityHoldings']['threeYearEarningsGrowth'].get('raw'),
-                'creditQuality': etf_holdings['bondHoldings']['creditQuality'].get('raw'),
-                'duration': etf_holdings['bondHoldings']['duration'].get('raw'),
-                'maturity': etf_holdings['bondHoldings']['maturity'].get('raw'),
+                'Equity_priceToEarnings': etf_holdings['equityHoldings']['priceToEarnings'].get('raw'),
+                'Equity_priceToBook': etf_holdings['equityHoldings']['priceToBook'].get('raw'),
+                'Equity_priceToSales': etf_holdings['equityHoldings']['priceToSales'].get('raw'),
+                'Equity_priceToCashflow': etf_holdings['equityHoldings']['priceToCashflow'].get('raw'),
+                'Equity_threeYearEarningsGrowth': etf_holdings['equityHoldings']['threeYearEarningsGrowth'].get('raw'),
+                'Bond_creditQuality': etf_holdings['bondHoldings']['creditQuality'].get('raw'),
+                'Bond_duration': etf_holdings['bondHoldings']['duration'].get('raw'),
+                'Bond_maturity': etf_holdings['bondHoldings']['maturity'].get('raw'),
             }
 
             sector_df = pd.DataFrame(data=sector, index=[0])
@@ -114,7 +141,14 @@ class ReadYahooETFStatData:
     def price(self):
         try:
             etf_price = self.js['quoteSummary']['result'][0]['price']
-            etf_price_df = pd.DataFrame.from_records(etf_price).loc['raw']
+            etf_price_df = pd.DataFrame.from_records(etf_price).loc['raw'][:]
+            etf_price_df = etf_price_df.to_frame().transpose()
+            drop_columns = ['index', 'currencySymbol', 'marketState', 'maxAge', 'postMarketSource', 'preMarketSource',
+                            'quoteSourceName', 'regularMarketSource', 'symbol', 'postMarketTime', 'preMarketTime',
+                            'regularMarketTime', 'toCurrency', 'underlyingSymbol', 'priceHint', 'circulatingSupply',
+                            'fromCurrency', 'lastMarket', 'exchangeDataDelayedBy', 'strikePrice', 'volume24Hr',
+                            'volumeAllCurrencies']
+            etf_price_df.drop(columns=[x for x in drop_columns if x in etf_price_df.columns], inplace=True)
             return etf_price_df
         except KeyError as e:
             raise YahooETFExtractionError(f"Key({e}) does not exist")
@@ -134,34 +168,107 @@ class YahooETF:
         self.logger = create_log(loggerName='YahooETFStats', loggerFileName=self.loggerFileName)
         self.use_tqdm = use_tqdm
 
+    @staticmethod
+    def _check_existing(stock, table, df_to_check):
+        sql = f"""
+                SELECT *
+                FROM {table}
+                WHERE ticker = '{stock}'
+            """
+        if df_to_check.empty:
+            return df_to_check
+
+        existing_df = DatabaseManagement(sql=sql).read_to_df()
+        existing_df.drop(columns=['data_id', 'updated_dt', 'ticker'], inplace=True)
+
+        if existing_df.empty:
+            return df_to_check
+
+        df_diff = pd.concat([existing_df, df_to_check]).drop_duplicates(subset=None, keep=False, inplace=True)
+
+        if df_diff is None:
+            return pd.DataFrame
+        else:
+            return df_diff
+
     def _get_etf_statistics(self, stock):
         data = YahooAPIParser(url=self.BASE_URL.format(stock=stock)).parse()
         # read data from Yahoo API
         readData = ReadYahooETFStatData(data)
-        annualTotalReturns = readData.annualTotalReturns()
-        annualTotalReturns['ticker'] = stock
-        annualTotalReturns['updated_dt'] = self.updated_dt
 
-        trailingReturns = readData.trailingReturns()
-        trailingReturns['ticker'] = stock
-        trailingReturns['updated_dt'] = self.updated_dt
+        try:
+            annualTotalReturns = readData.annualTotalReturns()
+            annualTotalReturns = self._check_existing(stock, 'yahoo_etf_annual_returns', annualTotalReturns)
+            if not annualTotalReturns.empty:
+                annualTotalReturns['ticker'] = stock
+                annualTotalReturns['updated_dt'] = self.updated_dt
+                DatabaseManagement(data_df=annualTotalReturns,
+                                   table='yahoo_etf_annual_returns',
+                                   insert_index=False).insert_db()
+        except YahooETFExtractionError:
+            self.logger.debug(f"{stock}: annualTotalReturns extraction failed")
 
-        riskOverviewStatistics = readData.riskOverviewStatistics()
+        try:
+            trailingReturns = readData.trailingReturns()
+            trailingReturns = self._check_existing(stock, 'yahoo_etf_trailing_returns', trailingReturns)
+            if not trailingReturns.empty:
+                trailingReturns['ticker'] = stock
+                trailingReturns['updated_dt'] = self.updated_dt
 
-        topHoldings = readData.topHoldings()
-        topHoldings['ticker'] = stock
-        topHoldings['updated_dt'] = self.updated_dt
+                DatabaseManagement(data_df=trailingReturns,
+                                   table='yahoo_etf_trailing_returns',
+                                   insert_index=False).insert_db()
+        except YahooETFExtractionError:
+            self.logger.debug(f"{stock}: trailingReturns extraction failed")
 
-        price = readData.price()
-        price['ticker'] = stock
-        price['updated_dt'] = self.updated_dt
+        try:
+            riskOverviewStatistics = readData.riskOverviewStatistics()
+            riskOverviewStatistics = self._check_existing(stock, 'yahoo_etf_3y5y10y_risk', riskOverviewStatistics)
+            if not riskOverviewStatistics.empty:
+                riskOverviewStatistics['ticker'] = stock
+                riskOverviewStatistics['updated_dt'] = self.updated_dt
+                DatabaseManagement(data_df=riskOverviewStatistics,
+                                   table='yahoo_etf_3y5y10y_risk',
+                                   insert_index=False).insert_db()
+        except YahooETFExtractionError:
+            self.logger.debug(f"{stock}: riskOverviewStatistics extraction failed")
 
-        print(riskOverviewStatistics)
+        try:
+            topHoldings = readData.topHoldings()
+            topHoldings = self._check_existing(stock, 'yahoo_etf_holdings', topHoldings)
+            if not topHoldings.empty:
+                topHoldings['ticker'] = stock
+                topHoldings['updated_dt'] = self.updated_dt
+                DatabaseManagement(data_df=topHoldings,
+                                   table='yahoo_etf_holdings',
+                                   insert_index=False).insert_db()
+        except YahooETFExtractionError:
+            self.logger.debug(f"{stock}: topHoldings extraction failed")
+
+        try:
+            price = readData.price()
+            price = self._check_existing(stock, 'yahoo_etf_prices', price)
+            if not price.empty:
+                price['ticker'] = stock
+                price['updated_dt'] = self.updated_dt
+                DatabaseManagement(data_df=price,
+                                   table='yahoo_etf_prices',
+                                   insert_index=False).insert_db()
+        except YahooETFExtractionError:
+            self.logger.debug(f"{stock}: price extraction failed")
+
+    def run(self):
+        stocks = SetPopulation(self.targeted_pop).setPop()
+        if self.batch:
+            parallel_process(stocks, self._get_etf_statistics, n_jobs=self.workers, use_tqdm=self.use_tqdm)
+        else:
+            parallel_process(stocks, self._get_etf_statistics, n_jobs=1, use_tqdm=self.use_tqdm)
 
 
 if __name__ == '__main__':
-    obj = YahooETF('2022-04-02', targeted_pop='YAHOO_ETF_ALL')
-    obj._get_etf_statistics('BND')
-
-
-
+    obj = YahooETF('2022-04-08',
+                   targeted_pop='YAHOO_ETF_ALL',
+                   batch=True,
+                   loggerFileName=None,
+                   use_tqdm=True)
+    obj.run()

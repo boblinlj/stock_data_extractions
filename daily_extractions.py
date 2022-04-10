@@ -1,5 +1,6 @@
 import sys
 from modules.extract_yahoo_stats import YahooStats
+from modules.extract_etf_stats import YahooETF
 import datetime
 from util.gcp_functions import upload_sql_to_GCP_cloud_storage
 from util.helper_functions import create_log
