@@ -16,7 +16,7 @@ def DailyExtractions(runtime):
     sys.stderr.write("Extracting Yahoo Statistics\n")
     sys.stderr.write('This job will population tables: \n'
                      '    --`yahoo_fundamental`\n')
-    # Call the job module
+    # Call the Yahoo Statistics module
     spider2 = YahooStats(runtime,
                          targeted_pop='YAHOO_STOCK_ALL',
                          batch=True,
@@ -24,11 +24,23 @@ def DailyExtractions(runtime):
                          use_tqdm=False)
     spider2.run()
 
+    # Call the Yahoo ETF
+    etf = YahooETF(runtime,
+                   targeted_pop='YAHOO_ETF_ALL',
+                   batch=True,
+                   loggerFileName=loggerFileName,
+                   use_tqdm=False)
+    etf.run()
+
+    # upload the data
     sys.stderr.write(f"Extracting Job is Completed, log is produced as {loggerFileName}\n")
     sys.stderr.write(f"{'*'*80}\n")
-
-    upload_sql_to_GCP_cloud_storage(['yahoo_fundamental'],
-                                    runtime)
+    upload_sql_to_GCP_cloud_storage(['yahoo_fundamental',
+                                     'yahoo_etf_prices',
+                                     'yahoo_etf_3y5y10y_risk',
+                                     'yahoo_etf_annual_returns',
+                                     'yahoo_etf_holdings',
+                                     'yahoo_etf_trailing_returns'], runtime)
 
 
 runtime = datetime.datetime.today().date()
