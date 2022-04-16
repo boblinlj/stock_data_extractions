@@ -22,6 +22,7 @@ pd.set_option('display.max_columns', None)
 class FactorCalculationError(Exception):
     pass
 
+
 class CalculateFactors:
     market = '^GSPC'  # use sp500 as the market index
 

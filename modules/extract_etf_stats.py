@@ -245,6 +245,19 @@ class YahooETF:
             self.logger.debug(f"{stock}: price extraction failed")
             self.failed.append(stock)
 
+        try:
+            price = readData.annualTotalReturns()
+            price = self._check_existing(stock, self.updated_dt, 'yahoo_etf_annual_returns', price)
+            if not price.empty:
+                price['ticker'] = stock
+                price['updated_dt'] = self.updated_dt
+                DatabaseManagement(data_df=price,
+                                   table='yahoo_etf_annual_returns',
+                                   insert_index=False).insert_db()
+        except YahooETFExtractionError:
+            self.logger.debug(f"{stock}: yahoo_etf_annual_returns extraction failed")
+            self.failed.append(stock)
+
         self.logger.info(f"{stock}: processed successfully")
 
     def run(self):
@@ -273,9 +286,9 @@ class YahooETF:
 
 
 if __name__ == '__main__':
-    obj = YahooETF('2022-04-09',
+    obj = YahooETF('2022-04-12',
                    targeted_pop='YAHOO_ETF_ALL',
                    batch=True,
                    loggerFileName=None,
                    use_tqdm=True)
-    obj.run()
+    obj._get_etf_statistics('BND')

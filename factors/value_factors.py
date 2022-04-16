@@ -15,7 +15,6 @@ def calculate_fcfta(input_df):
         output_df = stg_df.loc[stg_df[var_out].notnull()][[var_out]]
         return output_df
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1} or {var2}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -33,7 +32,6 @@ def calculate_capacq(input_df):
         stg_df[var_out] = (stg_df[var1] - stg_df[var2]) / stg_df[var3]
         return stg_df.loc[stg_df[var_out].notnull()][[var_out]]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1} or {var2} or {var3}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -49,7 +47,6 @@ def calculate_roe(input_df):
         stg_df[var_out] = stg_df[var1] / stg_df[var2]
         return stg_df.loc[stg_df[var_out].notnull()][[var_out]]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1} or {var2}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -65,7 +62,6 @@ def calculate_roa(input_df):
         stg_df[var_out] = stg_df[var1] / stg_df[var2]
         return stg_df.loc[stg_df[var_out].notnull()][[var_out]]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1} or {var2}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 def calculate_fcfyld(input_df):
@@ -81,7 +77,6 @@ def calculate_fcfyld(input_df):
         stg_df[var_out] = stg_df[var1] / stg_df[var2]
         return stg_df.loc[stg_df[var_out].notnull()][[var_out]]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1} or {var2}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -99,7 +94,6 @@ def calculate_eyldtrl(input_df):
         stg_df[var_out] = stg_df[var1] / stg_df[var2]
         return stg_df.loc[stg_df[var_out].notnull()][[var_out]]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1} or {var2}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -117,7 +111,6 @@ def calculate_eyldfwd(input_df, lookfwd_period_y: int = 3):
         stg_df[var_out] = stg_df[var1] * ((1 + stg_df[var2]) ** (4 * lookfwd_period_y))
         return stg_df.loc[stg_df[var_out].notnull()][[var_out]]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1} or {var2}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -132,6 +125,5 @@ def calculate_eyldavg(input_df, looking_proward_q: int = 16):
         stg_df[var_out] = stg_df[var1].rolling(looking_proward_q, min_periods=looking_proward_q).mean()
         return stg_df.loc[stg_df[var_out].notnull()][[var_out]]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 

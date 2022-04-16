@@ -16,7 +16,6 @@ def calculate_qsm(input_df, shift_periods=4):
         return stg_df.loc[stg_df[var_out].notnull()][[var_out]]
 
     else:
-        print(f'{var_out} Error: not all inputs are available = {var}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -72,7 +71,6 @@ def calculate_rdvol(input_df):
         stg_df[var_out] = stg_df[var1] * stg_df[var2]
         return stg_df[var_out]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -87,7 +85,6 @@ def calculate_max_drawdown(input_df, trading_days=252):
         stg_df[f'pcghi{trading_days}d'] = stg_df[var2] / stg_df[f'high_{trading_days}d'] - 1
         return stg_df[var_out]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -101,7 +98,6 @@ def calculate_rp(input_df, period, frequency='D'):
         stg_df[var_out] = stg_df[var1] / stg_df['average_price']
         return stg_df[var_out]
     else:
-        # print(f'{var_out} Error: not all inputs are available = {var1}')
         return pd.DataFrame(index=input_df.index, columns=[var_out])
 
 
@@ -177,6 +173,5 @@ def calculate_tparev(input_df, lag, frequency='D'):
         tmp.dropna(inplace=True)
         return tmp
     else:
-        # print(f'calculate_tparev Error: not all inputs are available = {var1}')
         return pd.DataFrame(index=tmp.index, columns=[output])
 

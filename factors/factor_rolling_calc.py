@@ -4,7 +4,6 @@ import numpy as np
 class FactorCalculationError(Exception):
     pass
 
-
 def add_rolling_sum(input_df,
                     input_cols: list,
                     number_of_periods=4):
