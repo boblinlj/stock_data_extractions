@@ -32,7 +32,7 @@ class write_insert_db:
                 """.format(self.table, self.updated_dt)
 
         df = pd.read_sql(sql=sql, con=self.cnn)
-        df.drop(columns='data_id', inplace=True)
+        # df.drop(columns='data_id', inplace=True)
 
         return df.to_dict(orient='records')
 

@@ -134,9 +134,9 @@ class CalculateFactors:
 
         # calculate price factors
         ram1 = calculate_ram(self.price_f, self.market_f, beta='60M', lags=[126, 189, 252], skips=[21],
-                                   frequency='D', keep_beta=False)
+                             frequency='D', keep_beta=False)
         ram2 = calculate_ram(self.price_f, self.market_f, beta='60M', lags=[21], skips=[0], frequency='D',
-                                   keep_beta=True)
+                             keep_beta=True)
 
         pcghi12m = calculate_max_drawdown(self.price_f, 252)
         pch63d = calculate_return(self.price_f, lag=63, skip=0, frequency='D')
@@ -216,8 +216,6 @@ class FactorJob:
                                 self.existing_list + jcfg.BLOCK)
 
     def _run_each_stock(self, stock):
-        # self.logger.info(f"Start Processing stock = {stock}")
-        # print(f"Start Processing stock = {stock}")
         each_stock = CalculateFactors(stock=stock,
                                       start_dt=self.start_dt,
                                       updated_dt=self.updated_dt,

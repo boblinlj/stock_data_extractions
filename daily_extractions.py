@@ -43,5 +43,6 @@ def DailyExtractions(runtime):
                                      'yahoo_etf_trailing_returns'], runtime)
 
 
-runtime = datetime.datetime.today().date()
+# runtime = datetime.datetime.today().date()
+runtime = '2022-04-11'
 DailyExtractions(runtime)
