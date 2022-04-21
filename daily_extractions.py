@@ -21,7 +21,7 @@ def DailyExtractions(runtime):
                          targeted_pop='YAHOO_STOCK_ALL',
                          batch=True,
                          loggerFileName=loggerFileName,
-                         use_tqdm=False)
+                         use_tqdm=True)
     spider2.run()
 
     # Call the Yahoo ETF
@@ -43,6 +43,6 @@ def DailyExtractions(runtime):
                                      'yahoo_etf_trailing_returns'], runtime)
 
 
-# runtime = datetime.datetime.today().date()
-runtime = '2022-04-11'
+runtime = datetime.datetime.today().date()
+# runtime = '2022-04-11'
 DailyExtractions(runtime)

@@ -84,6 +84,10 @@ class YahooStats:
         try:
             data = YahooAPIParser(url=self.BASE_URL.format(stock=stock)).parse()
             out_df = ReadYahooStatsData(data).parse()
+            out_df['lastDividendDate'] = unix_to_regular_time(out_df['lastDividendDate'])
+            out_df['exDividendDate'] = unix_to_regular_time(out_df['exDividendDate'])
+            out_df['lastSplitDate'] = unix_to_regular_time(out_df['lastSplitDate'])
+            out_df['ticker'] = stock
             out_df['updated_dt'] = self.updated_dt
             return out_df
         except Exception as e:
@@ -101,29 +105,16 @@ class YahooStats:
 
         # enter yahoo fundamental table
         try:
-            DatabaseManagement(data_df=data_df.drop(ycfg.YAHOO_STATS_DROP_COLUMNS, axis=1, errors='ignore'), table='yahoo_fundamental').insert_db()
+            DatabaseManagement(data_df=data_df[ycfg.YAHOO_STATS_COLUMNS], table='yahoo_fundamental').insert_db()
             self.logger.info("yahoo_fundamental: Yahoo statistics data entered successfully for stock = {}".format(stock))
-        except (DatabaseManagementError, KeyError):
-            self.logger.error("yahoo_fundamental: Yahoo statistics data entered failed for stock = {}".format(stock))
-            self.failed_extract.append(stock)
-
-        # enter yahoo price table
-        try:
-            DatabaseManagement(data_df=data_df[ycfg.PRICE_TABLE_COLUMNS], table='yahoo_price').insert_db()
-            self.logger.info("yahoo_price: Yahoo price data entered successfully for stock = {}".format(stock))
-        except (DatabaseManagementError, KeyError):
-            self.logger.error("yahoo_price: Yahoo price data entered failed for stock = {}".format(stock))
-            self.failed_extract.append(stock)
-
-        # enter yahoo consensus table
-        try:
-            DatabaseManagement(data_df=data_df[ycfg.YAHOO_CONSENSUS_COLUMNS], table='yahoo_consensus_price').insert_db()
-            self.logger.info("yahoo_consensus_price: Yahoo consensus data entered successfully for stock = {}".format(stock))
-        except (DatabaseManagementError, KeyError):
-            self.logger.error("yahoo_consensus_price: Yahoo consensus data entered failed for stock = {}".format(stock))
+        except (DatabaseManagementError, KeyError) as e:
+            self.logger.error(f"yahoo_fundamental: Yahoo statistics data entered failed for stock = {stock}, {e}")
             self.failed_extract.append(stock)
 
         return None
+
+    def _existing_stock_list(self):
+        return DatabaseManagement(table='yahoo_fundamental', key='ticker', where=f"updated_dt = '{self.updated_dt}'").check_population()
 
     def run(self):
         start = time.time()
@@ -131,6 +122,7 @@ class YahooStats:
         self.logger.info("-------------First Extract Starts-------------")
         stocks = SetPopulation(self.targeted_pop).setPop()
         stocks = dedup_list(stocks)
+        stocks = returnNotMatches(stocks, self._existing_stock_list())
         existing_rec = DatabaseManagement(table='yahoo_fundamental',
                                           key='ticker',
                                           where=f"updated_dt = '{self.updated_dt}'"
@@ -165,9 +157,9 @@ class YahooStats:
 
 
 if __name__ == '__main__':
-    spider = YahooStats(date(2022, 3, 26),
-                        targeted_pop='YHAOO_STOCK_ALL',
+    spider = YahooStats(date(2022, 4, 20),
+                        targeted_pop='YAHOO_STOCK_ALL',
                         batch=False,
                         loggerFileName=None,
                         use_tqdm=False)
-    spider.run()
+    print(spider._extract_each_stock('SNOTF'))
