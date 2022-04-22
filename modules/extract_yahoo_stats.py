@@ -89,7 +89,9 @@ class YahooStats:
             out_df['lastSplitDate'] = unix_to_regular_time(out_df['lastSplitDate'])
             out_df['ticker'] = stock
             out_df['updated_dt'] = self.updated_dt
+
             return out_df
+
         except Exception as e:
             self.logger.error("Fail to extract stock = {}, error: {}".format(stock, e))
             return pd.DataFrame()
@@ -114,12 +116,14 @@ class YahooStats:
         return None
 
     def _existing_stock_list(self):
-        return DatabaseManagement(table='yahoo_fundamental', key='ticker', where=f"updated_dt = '{self.updated_dt}'").check_population()
+        return DatabaseManagement(table='yahoo_fundamental',
+                                  key='ticker',
+                                  where=f"updated_dt = '{self.updated_dt}'").check_population()
 
     def run(self):
         start = time.time()
 
-        self.logger.info("-------------First Extract Starts-------------")
+        self.logger.info("----------------First Extract Ends-------------")
         stocks = SetPopulation(self.targeted_pop).setPop()
         stocks = dedup_list(stocks)
         stocks = returnNotMatches(stocks, self._existing_stock_list())
@@ -132,7 +136,7 @@ class YahooStats:
             parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stocks, self._extract_each_stock, n_jobs=1)
-        self.logger.info("-------------First Extract Ends-------------")
+        self.logger.info("----------------First Extract Ends-------------")
 
         self.logger.info("-------------Second Extract Starts-------------")
         stocks = dedup_list(self.failed_extract)

@@ -1,4 +1,4 @@
-import sys
+import time
 from configs import job_configs as jcfg
 import pandas as pd
 from util.helper_functions import create_log,unix_to_regular_time, dedup_list
@@ -261,6 +261,8 @@ class YahooETF:
         self.logger.info(f"{stock}: processed successfully")
 
     def run(self):
+        start = time.time()
+
         self.logger.info(f"{'*'*40}1st Run{'*'*40}")
         stocks = SetPopulation(self.targeted_pop).setPop()
         if self.batch:
@@ -283,6 +285,9 @@ class YahooETF:
             parallel_process(stocks, self._get_etf_statistics, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
             parallel_process(stocks, self._get_etf_statistics, n_jobs=1, use_tqdm=self.use_tqdm)
+
+        end = time.time()
+        self.logger.info("took {} minutes".format(round((end - start) / 60)))
 
 
 if __name__ == '__main__':
