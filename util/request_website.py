@@ -59,10 +59,11 @@ class GetWebsite:
 
 class YahooWebParser(GetWebsite):
     def _parse_html_for_json(self):
-        if self.response() is None:
+        resp = self.response()
+        if resp is None:
             raise WebParseError(f'Response is empty for {self.url}')
-        elif self.response().status_code == 200:
-            soup = BeautifulSoup(self.response().text, 'html.parser')
+        elif resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, 'html.parser')
             pattern = re.compile(r'\s--\sData\s--\s')
             try:
                 script_data = soup.find('script', text=pattern).contents[0]
@@ -74,10 +75,10 @@ class YahooWebParser(GetWebsite):
                 return json_data
             except AttributeError as e:
                 raise WebParseError(
-                    f'Attribution error {self.response().status_code} for {self.url}')
+                    f'Attribution error {resp.status_code} for {self.url}')
         else:
             raise WebParseError(
-                f'Response status code is {self.response().status_code} for {self.url}')
+                f'Response status code is {resp.status_code} for {self.url}')
 
     def parse(self):
         for trail in range(5):
@@ -86,22 +87,22 @@ class YahooWebParser(GetWebsite):
                 return self._parse_html_for_json()
 
 
-class YahooAPIParser(YahooWebParser):
+class YahooAPIParser(GetWebsite):
     def _parse_for_json(self):
-        if self.response() is None:
+        resp = self.response()
+        if resp is None:
             raise WebParseError(f'Response is empty for {self.url}')
-        elif self.response().status_code == 200:
-            return json.loads(self.response().text)
+        elif resp.status_code == 200:
+            return json.loads(resp.text)
         else:
             raise WebParseError(
-                f'Response status code is {self.response().status_code} for {self.url}')
+                f'Response status code is {resp.status_code} for {self.url}')
 
     def parse(self):
         for trail in range(5):
             js = self._parse_for_json()
             if js is not None:
-                return self._parse_for_json()
-
+                return js
         return None
 
 

@@ -18,12 +18,12 @@ def DailyExtractions(runtime):
     sys.stderr.write('This job will population tables: \n'
                      '    --`yahoo_fundamental`\n')
     # Call the Yahoo Statistics module
-    spider2 = YahooStats(runtime,
-                         targeted_pop='YAHOO_STOCK_ALL',
-                         batch=True,
-                         loggerFileName=loggerFileName,
-                         use_tqdm=False)
-    spider2.run()
+    # spider2 = YahooStats(runtime,
+    #                      targeted_pop='YAHOO_STOCK_ALL',
+    #                      batch=True,
+    #                      loggerFileName=loggerFileName,
+    #                      use_tqdm=False)
+    # spider2.run()
 
     sys.stderr.write(f"{'-'*80}\n")
     sys.stderr.write("Extracting Yahoo ETF Stats\n")
@@ -34,12 +34,12 @@ def DailyExtractions(runtime):
                      '    --`yahoo_etf_holdings`\n'
                      '    --`yahoo_etf_trailing_returns`\n')
     # Call the Yahoo ETF
-    etf = YahooETF(runtime,
-                   targeted_pop='YAHOO_ETF_ALL',
-                   batch=True,
-                   loggerFileName=loggerFileName,
-                   use_tqdm=False)
-    etf.run()
+    # etf = YahooETF(runtime,
+    #                targeted_pop='YAHOO_ETF_ALL',
+    #                batch=True,
+    #                loggerFileName=loggerFileName,
+    #                use_tqdm=False)
+    # etf.run()
 
     # upload the data
     sys.stderr.write(f"Extracting Job is Completed, log is produced as {loggerFileName}\n")
@@ -52,5 +52,6 @@ def DailyExtractions(runtime):
                                      'yahoo_etf_trailing_returns'], runtime)
 
 
-runtime = datetime.datetime.today().date()
+# runtime = datetime.datetime.today().date()
+runtime = '2022-04-18'
 DailyExtractions(runtime)

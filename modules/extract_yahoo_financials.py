@@ -187,5 +187,7 @@ if __name__ == '__main__':
                             targeted_pop='STOCK+AARON',
                             batch=True,
                             loggerFileName=None)
-    print(spider._extract_api('AAPL'))
+    spider._existing_dt()
+    print(spider.ext_list_data)
+    print(spider._extract_each_stock('AAPL'))
     # spider.run()
