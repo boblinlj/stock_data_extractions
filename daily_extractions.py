@@ -5,6 +5,7 @@ import datetime
 from util.gcp_functions import upload_sql_to_GCP_cloud_storage
 from util.helper_functions import create_log
 
+
 def DailyExtractions(runtime):
     loggerFileName = f"daily_job_{datetime.date.today().strftime('%Y%m%d')}.log"
 
@@ -21,9 +22,17 @@ def DailyExtractions(runtime):
                          targeted_pop='YAHOO_STOCK_ALL',
                          batch=True,
                          loggerFileName=loggerFileName,
-                         use_tqdm=True)
+                         use_tqdm=False)
     spider2.run()
 
+    sys.stderr.write(f"{'-'*80}\n")
+    sys.stderr.write("Extracting Yahoo ETF Stats\n")
+    sys.stderr.write('This job will population tables: \n'
+                     '    --`yahoo_etf_prices`\n'
+                     '    --`yahoo_etf_3y5y10y_risk`\n'
+                     '    --`yahoo_etf_annual_returns`\n'
+                     '    --`yahoo_etf_holdings`\n'
+                     '    --`yahoo_etf_trailing_returns`\n')
     # Call the Yahoo ETF
     etf = YahooETF(runtime,
                    targeted_pop='YAHOO_ETF_ALL',
@@ -44,5 +53,4 @@ def DailyExtractions(runtime):
 
 
 runtime = datetime.datetime.today().date()
-# runtime = '2022-04-11'
 DailyExtractions(runtime)

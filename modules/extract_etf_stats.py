@@ -246,12 +246,12 @@ class YahooETF:
             self.failed.append(stock)
 
         try:
-            price = readData.annualTotalReturns()
-            price = self._check_existing(stock, self.updated_dt, 'yahoo_etf_annual_returns', price)
-            if not price.empty:
-                price['ticker'] = stock
-                price['updated_dt'] = self.updated_dt
-                DatabaseManagement(data_df=price,
+            annualreturn = readData.annualTotalReturns()
+            annualreturn = self._check_existing(stock, self.updated_dt, 'yahoo_etf_annual_returns', annualreturn)
+            if not annualreturn.empty:
+                annualreturn['ticker'] = stock
+                annualreturn['updated_dt'] = self.updated_dt
+                DatabaseManagement(data_df=annualreturn,
                                    table='yahoo_etf_annual_returns',
                                    insert_index=False).insert_db()
         except YahooETFExtractionError:
