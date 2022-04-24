@@ -3,8 +3,9 @@ from util.helper_functions import create_log
 from util.parallel_process import parallel_process
 from util.get_stock_population import StockPopulation
 from util.helper_functions import dedup_list, returnNotMatches
-from util.request_website import YahooWebParser
+from util.request_website import YahooAPIParser
 from util.database_management import DatabaseManagement
+from util.get_stock_population import SetPopulation
 import pandas as pd
 from datetime import date
 import numpy as np
@@ -27,9 +28,11 @@ class ReadYahooAnalysisData:
                       '-4q': 'Last4Q'
                       }
 
-        analysis = self.data['context']['dispatcher']['stores']['QuoteSummaryStore']
+        analysis = self.data['quoteSummary']['result'][0]
+
         # process earnings forecast data
         earnings_trend = analysis['earningsTrend']['trend']
+
         period_df_lst = []
         for period_trend in earnings_trend:
             one_trend_dic = {
@@ -96,12 +99,13 @@ class ReadYahooAnalysisData:
 
 class YahooAnalysis:
     workers = jcfg.WORKER
-    url = "https://finance.yahoo.com/quote/{ticker}/analysis?p={ticker}"
+    url = "https://query1.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=earningsTrend%2CearningsHistory"
     stock_lst = StockPopulation()
 
-    def __init__(self, updated_dt, batch_run=True, loggerFileName=None, use_tqdm=True):
+    def __init__(self, updated_dt, targeted_pop, batch_run=True, loggerFileName=None, use_tqdm=True):
         # init the input
         self.updated_dt = updated_dt
+        self.targeted_pop = targeted_pop
         self.batch_run = batch_run
         self.loggerFileName = loggerFileName
         self.logger = create_log(loggerName='yahoo_analysis', loggerFileName=self.loggerFileName)
@@ -112,7 +116,7 @@ class YahooAnalysis:
 
     def _get_analysis_data(self, stock):
         try:
-            data = YahooWebParser(url=self.url.format(ticker=stock), proxy=True).parse()
+            data = YahooAPIParser(url=self.url.format(ticker=stock), proxy=True).parse()
             out_df = ReadYahooAnalysisData(data).parse()
             out_df['ticker'] = stock
             return out_df
@@ -134,10 +138,8 @@ class YahooAnalysis:
                 self.logger.debug(f"Failed: Entering stock = {stock}, due to {e}")
 
     def run_job(self):
-        stocks = self.stock_lst.get_stock_list() \
-                 + self.stock_lst.get_stock_list_from_arron() \
-                 + self.stock_lst.get_REIT_list() \
-                 + self.stock_lst.get_ETF_list()
+
+        stocks = SetPopulation(self.targeted_pop).setPop()
 
         stocks = dedup_list(stocks)
         stock_list = returnNotMatches(stocks, self.existing_rec + jcfg.BLOCK)[:]
@@ -151,6 +153,7 @@ class YahooAnalysis:
 
 if __name__ == '__main__':
     obj = YahooAnalysis(updated_dt=date.today(),
+                        targeted_pop='YAHOO_STOCK_ALL',
                         batch_run=True,
                         loggerFileName=None)
-    obj.run_job()
+    obj._get_analysis_data('AAPL')
