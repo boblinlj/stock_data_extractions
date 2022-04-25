@@ -5,7 +5,7 @@ from util.helper_functions import create_log
 import sys
 
 
-def DailyExtractions(runtime):
+def main(runtime):
     loggerFileName = f"yahoo_financial_statements_{datetime.date.today().strftime('%Y%m%d')}.log"
 
     create_log(loggerName='yahoo_financials_', loggerFileName=loggerFileName)
@@ -18,6 +18,7 @@ def DailyExtractions(runtime):
                      '    --`yahoo_annual_fundamental`\n'
                      '    --`yahoo_quarterly_fundamental`\n'
                      '    --`yahoo_trailing_fundamental`\n')
+
     # Call the job module
     spider2 = YahooFinancial(runtime,
                              targeted_pop='YAHOO_STOCK_ALL',
@@ -37,5 +38,5 @@ def DailyExtractions(runtime):
 
 runtime = datetime.datetime.today().date()
 # runtime = datetime.datetime.today().date() - datetime.timedelta(days=1)
-DailyExtractions(runtime)
+main(runtime)
 
