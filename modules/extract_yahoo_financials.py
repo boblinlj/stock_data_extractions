@@ -183,11 +183,9 @@ class YahooFinancial:
 
 
 if __name__ == '__main__':
-    spider = YahooFinancial(datetime.datetime.today().date(),
-                            targeted_pop='STOCK+AARON',
+
+    spider = YahooFinancial(datetime.datetime.today().date()-datetime.timedelta(days=-3),
+                            targeted_pop='YAHOO_STOCK_ALL',
                             batch=True,
                             loggerFileName=None)
-    spider._existing_dt()
-    print(spider.ext_list_data)
-    print(spider._extract_each_stock('AAPL'))
-    # spider.run()
+    spider.run()
