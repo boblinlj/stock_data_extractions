@@ -1,6 +1,6 @@
 import os
 from sqlalchemy import create_engine
-from configs import database_configs as dbcfg
+from configs import database_configs_nas as dbcfg
 from configs import job_configs as jcfg
 import pandas as pd
 import datetime

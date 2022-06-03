@@ -1,4 +1,4 @@
-from configs import database_configs as dbcfg
+from configs import database_configs_nas as dbcfg
 from sqlalchemy import create_engine
 import pandas as pd
 

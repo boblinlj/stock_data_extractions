@@ -1,19 +1,7 @@
-# FINVIZ_TICKERS = ['ticker', 'company_name', 'sector', 'industry', 'country', 'market_cap', 'pe', 'price',
-#                   'price_chg', 'updated_dt']
 FINVIZ_TICKERS = ['company_name', 'sector', 'industry', 'country', 'market_cap', 'pe', 'price',
                   'price_chg', 'updated_dt']
 
-# FINVIZ_SCREENER = ['ticker', 'market_cap', 'pe', 'fwd_pe', 'peg', 'ps', 'pb', 'pc', 'pfcf', 'dividend',
-#                                   'payout_ratio', 'eps', 'eps_this_y', 'eps_next_y', 'eps_past_5y', 'eps_next_5y',
-#                                   'sales_past_5y', 'eps_q_q', 'sales_q_q', 'outstanding', 'float_shares',
-#                                   'insider_own', 'insider_trans', 'inst_own', 'inst_trans', 'float_short',
-#                                   'short_ratio', 'roa', 'roe',
-#                                   'roi', 'curr_r', 'quick_r', 'ltdebt_eq', 'debt_eq', 'gross_m', 'oper_m', 'profit_m',
-#                                   'perf_week', 'perf_month', 'perf_quart', 'perf_half', 'perf_year', 'perf_ytd',
-#                                   'beta', 'atr', 'volatility_w', 'volatility_m', 'sma20', 'sma50', 'sma200',
-#                                   '50d_high', '50d_low', '52w_high', '52w_low', 'rsi', 'from_open', 'gap', 'recom',
-#                                   'avg_volume', 'rel_volume', 'price', 'price_chg', 'volume', 'earnings',
-#                                   'target_price', 'ipo_date', 'updated_dt']
+
 FINVIZ_SCREENER = ['market_cap', 'pe', 'fwd_pe', 'peg', 'ps', 'pb', 'pc', 'pfcf', 'dividend',
                                   'payout_ratio', 'eps', 'eps_this_y', 'eps_next_y', 'eps_past_5y', 'eps_next_5y',
                                   'sales_past_5y', 'eps_q_q', 'sales_q_q', 'outstanding', 'float_shares',
