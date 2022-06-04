@@ -1,6 +1,6 @@
 from modules.extract_yahoo_financials import YahooFinancial
 import datetime
-from util.gcp_functions import upload_sql_to_GCP_cloud_storage
+from util.transfer_data import UploadData2GCP
 from util.helper_functions import create_log
 import sys
 
@@ -30,13 +30,9 @@ def main(runtime):
     sys.stderr.write(f"Extracting Job is Completed, log is produced as {loggerFileName}\n")
     sys.stderr.write(f"{'*'*80}\n")
 
-    upload_sql_to_GCP_cloud_storage(['yahoo_annual_fundamental',
-                                     'yahoo_quarterly_fundamental',
-                                     'yahoo_trailing_fundamental'],
-                                    runtime)
+    UploadData2GCP(['yahoo_annual_fundamental', 'yahoo_quarterly_fundamental', 'yahoo_trailing_fundamental'])
 
 
 runtime = datetime.datetime.today().date()
-# runtime = datetime.datetime.today().date() - datetime.timedelta(days=1)
 main(runtime)
 
