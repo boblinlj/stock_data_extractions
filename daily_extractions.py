@@ -2,7 +2,7 @@ import sys
 from modules.extract_yahoo_stats import YahooStats
 from modules.extract_etf_stats import YahooETF
 import datetime
-from util.gcp_functions import upload_sql_to_GCP_cloud_storage
+from util.transfer_data import adhoc_uplaod
 from util.helper_functions import create_log
 
 
@@ -17,6 +17,7 @@ def DailyExtractions(runtime):
     sys.stderr.write("Extracting Yahoo Statistics\n")
     sys.stderr.write('This job will population tables: \n'
                      '    --`yahoo_fundamental`\n')
+
     # Call the Yahoo Statistics module
     spider2 = YahooStats(runtime,
                          targeted_pop='YAHOO_STOCK_ALL',
@@ -42,16 +43,18 @@ def DailyExtractions(runtime):
     etf.run()
 
     # upload the data
-    sys.stderr.write(f"Extracting Job is Completed, log is produced as {loggerFileName}\n")
     sys.stderr.write(f"{'*'*80}\n")
-    upload_sql_to_GCP_cloud_storage(['yahoo_fundamental',
-                                     'yahoo_etf_prices',
-                                     'yahoo_etf_3y5y10y_risk',
-                                     'yahoo_etf_annual_returns',
-                                     'yahoo_etf_holdings',
-                                     'yahoo_etf_trailing_returns'], runtime)
+    sys.stderr.write("Upload data to the cloud \n")
+    for table in ['yahoo_etf_3y5y10y_risk',
+                  'yahoo_etf_annual_returns',
+                  'yahoo_etf_holdings',
+                  'yahoo_etf_prices',
+                  'yahoo_etf_trailing_returns',
+                  'yahoo_fundamental']:
+        adhoc_uplaod(table).run()
 
 
-# runtime = datetime.datetime.today().date()
-runtime = '2022-04-18'
+
+runtime = datetime.datetime.today().date()
+# runtime = '2022-04-18'
 DailyExtractions(runtime)

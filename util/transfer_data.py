@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 import pandas as pd
 import configs.database_configs_nas as dcf_nas
+import configs.database_configs_prod as dcf_prod
 
 
 class adhoc_uplaod:
@@ -10,13 +11,21 @@ class adhoc_uplaod:
     database_port = dcf_nas.MYSQL_PORT
     database_nm = dcf_nas.MYSQL_DATABASE
 
-    cnn_from = create_engine(f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
-                             pool_size=20,
-                             max_overflow=0)
+    database_ip_prd = dcf_prod.MYSQL_HOST
+    database_user_prd = dcf_prod.MYSQL_USER
+    database_pw_prd = dcf_prod.MYSQL_PASSWORD
+    database_port_prd = dcf_prod.MYSQL_PORT
+    database_nm_prd = dcf_prod.MYSQL_DATABASE
 
-    cnn_to = create_engine(f'mysql+mysqlconnector://boblin:Zuodan199064@34.70.76.153:3306/financial_PROD',
-                           pool_size=20,
-                           max_overflow=0)
+    cnn_from = create_engine(
+        f'mysql+mysqlconnector://{database_user}:{database_pw}@{database_ip}:{database_port}/{database_nm}',
+        pool_size=20,
+        max_overflow=0)
+
+    cnn_to = create_engine(
+        f'mysql+mysqlconnector://{database_user_prd}:{database_pw_prd}@{database_ip_prd}:{database_port_prd}/{database_nm_prd}',
+        pool_size=20,
+        max_overflow=0)
 
     def __init__(self, table):
         self.table = table
@@ -26,8 +35,7 @@ class adhoc_uplaod:
         return pd.read_sql(sql=sql, con=self.cnn_to).iloc[0, 0]
 
     def upload_the_data(self, df):
-        df.to_sql(name=self.table,
-                  con=self.cnn_to,
+        df.to_sql(name=self.table, con=self.cnn_to,
                   if_exists='append',
                   index=False,
                   chunksize=2000)
@@ -42,8 +50,11 @@ class adhoc_uplaod:
 
     def run(self):
         days = self.days_to_extract(self.find_the_latest_entry())
+        if len(days) <= 0:
+            print(f"{self.table} does not have new data")
         for i in days[:]:
             df = self.extract_data(i[0])
+            print(f"{self.table} is updated for {i[0]} with {df.shape[0]} records")
             self.upload_the_data(df=df)
 
 
@@ -56,7 +67,7 @@ if __name__ == '__main__':
                   'yahoo_etf_prices',
                   'yahoo_etf_trailing_returns',
                   'yahoo_quarterly_fundamental',
-                  'yahoo_trailing_fundamental'
+                  'yahoo_trailing_fundamental',
+                  'yahoo_fundamental'
                   ]:
-        print(table)
         adhoc_uplaod(table).run()

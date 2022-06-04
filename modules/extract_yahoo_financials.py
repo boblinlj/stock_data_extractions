@@ -68,7 +68,7 @@ class YahooFinancial:
     workers = jcfg.WORKER
     BASE_URL = 'https://query1.finance.yahoo.com'
     df_for_elements = DatabaseManagement(sql="""SELECT type, freq, data
-                                            FROM yahoo_financial_statement_data_control""").read_to_df()
+                                            FROM `yahoo_financial_statement_data_control`""").read_to_df()
     all_elements = df_for_elements.data.values.tolist()
     no_of_requests = 0
     no_of_db_entries = 0
@@ -120,6 +120,7 @@ class YahooFinancial:
             return data
 
     def _extract_each_stock(self, stock):
+        self.logger.info(f"Processing {stock} for fundamental data")
         js = self._extract_api(stock)
         if js is None:
             self.failed_extract.append(stock)
