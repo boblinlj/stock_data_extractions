@@ -2,7 +2,7 @@ import sys
 from modules.extract_yahoo_stats import YahooStats
 from modules.extract_etf_stats import YahooETF
 import datetime
-from util.transfer_data import adhoc_uplaod
+from util.transfer_data import UploadData2GCP
 from util.helper_functions import create_log
 
 
@@ -11,9 +11,9 @@ def DailyExtractions(runtime):
 
     create_log(loggerName='daily_job', loggerFileName=loggerFileName)
 
-    sys.stderr.write(f"{'*'*80}\n")
+    sys.stderr.write(f"{'*' * 80}\n")
     sys.stderr.write(f'Daily job started for {runtime}\n')
-    sys.stderr.write(f"{'-'*80}\n")
+    sys.stderr.write(f"{'-' * 80}\n")
     sys.stderr.write("Extracting Yahoo Statistics\n")
     sys.stderr.write('This job will population tables: \n'
                      '    --`yahoo_fundamental`\n')
@@ -26,7 +26,7 @@ def DailyExtractions(runtime):
                          use_tqdm=False)
     spider2.run()
 
-    sys.stderr.write(f"{'-'*80}\n")
+    sys.stderr.write(f"{'-' * 80}\n")
     sys.stderr.write("Extracting Yahoo ETF Stats\n")
     sys.stderr.write('This job will population tables: \n'
                      '    --`yahoo_etf_prices`\n'
@@ -43,18 +43,16 @@ def DailyExtractions(runtime):
     etf.run()
 
     # upload the data
-    sys.stderr.write(f"{'*'*80}\n")
+    sys.stderr.write(f"{'*' * 80}\n")
     sys.stderr.write("Upload data to the cloud \n")
-    for table in ['yahoo_etf_3y5y10y_risk',
-                  'yahoo_etf_annual_returns',
-                  'yahoo_etf_holdings',
-                  'yahoo_etf_prices',
-                  'yahoo_etf_trailing_returns',
-                  'yahoo_fundamental']:
-        adhoc_uplaod(table).run()
-
+    tables = ['yahoo_etf_3y5y10y_risk',
+              'yahoo_etf_annual_returns',
+              'yahoo_etf_holdings',
+              'yahoo_etf_prices',
+              'yahoo_etf_trailing_returns',
+              'yahoo_fundamental']
+    UploadData2GCP(tables).run()
 
 
 runtime = datetime.datetime.today().date()
-# runtime = '2022-04-18'
 DailyExtractions(runtime)
