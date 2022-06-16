@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 import configs.database_configs_nas as dcf_nas
 import configs.database_configs_prod as dcf_prod
+from util.helper_functions import create_log
 
 
 class UploadData2GCP:
@@ -27,8 +28,9 @@ class UploadData2GCP:
         pool_size=20,
         max_overflow=0)
 
-    def __init__(self, table_to_upload: list):
+    def __init__(self, table_to_upload: list, logger=None):
         self.table_to_upload = table_to_upload
+        self.logger = logger
 
     def find_the_latest_entry(self, _each_table):
         sql = f"""select max(updated_dt) as updated_dt from {_each_table}"""
@@ -51,12 +53,22 @@ class UploadData2GCP:
     def run(self):
         for _each_table in self.table_to_upload:
             days = self.days_to_extract(self.find_the_latest_entry(_each_table), _each_table)
+
+            # if there is no new days, ie no new data
             if len(days) <= 0:
-                print(f"{_each_table} does not have new data")
+                if self.logger:
+                    self.logger.info(f"{_each_table} does not have new data")
+                else:
+                    print(f"{_each_table} does not have new data")
+
+            # processing new data date one by one
             for i in days[:]:
                 df = self.extract_data(_each_table, i[0])
-                print(f"{_each_table} is updated for {i[0]} with {df.shape[0]} records")
                 self.upload_the_data(df=df, _each_table=_each_table)
+                if self.logger:
+                    print(f"{_each_table} is updated for {i[0]} with {df.shape[0]} records")
+                else:
+                    self.logger.info(f"{_each_table} is updated for {i[0]} with {df.shape[0]} records")
 
 
 if __name__ == '__main__':
@@ -70,4 +82,4 @@ if __name__ == '__main__':
               'yahoo_trailing_fundamental',
               'yahoo_fundamental'
               ]
-    UploadData2GCP(tables).run()
+    UploadData2GCP(tables, None).run()
