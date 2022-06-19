@@ -34,7 +34,7 @@ class ExtractScreener:
             total = js['context']['dispatcher']['stores']['ScreenerResultsStore']['results']['total']
             if len(rows) > 0:
                 df = pd.DataFrame.from_records(rows)[self.keep_col]
-                # df['offset'] = offset
+                df['offset'] = offset
                 if df.empty:
                     return total, False
                 else:
@@ -59,11 +59,12 @@ class ExtractScreener:
         start = 0
         end = (int(total / 100) + 1) * 100
         offsets = list(range(start, end, 100))[1:]
-        parallel_process(offsets, self.parse_results_from_each_page, 1, use_tqdm=True)
+        parallel_process(offsets, self.parse_results_from_each_page, 5, use_tqdm=True)
 
     def parse(self):
         self.loop_all_pages_concurrently()
         self.output_df.to_csv(f"{self.token}.csv")
+        self.output_df.drop(columns=['offset'], axis=1, inplace=True)
 
         # self.output_df = pd.read_csv(f'{token}.csv')
         self.output_df.rename(columns={'symbol': 'ticker'}, inplace=True)
@@ -74,7 +75,8 @@ class ExtractScreener:
 
 
 if __name__ == "__main__":
-    token = '14ac5eff-738b-4163-820e-ea623990515f'
+    token = '444e9f1c-addc-4fe8-b7e7-360d8d1484a7'
+    # token = '4778f084-a29a-457a-b271-5bb5d465caa3'
     today = date.today()
     logfile_name = f"{token}_{today}.log"
     # print(logfile_name)
