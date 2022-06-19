@@ -42,13 +42,15 @@ class ReadYahooFinancialData:
                     one_list.append(
                         {"ticker": ticker,
                          var_name: data['reportedValue']['raw'],
-                         'asOfDate': data['asOfDate']}
+                         'asOfDate': data['asOfDate'],
+                         'currencyCode': data['currencyCode']}
                     )
             else:
                 one_list.append(
                     {"ticker": ticker,
                      var_name: np.NaN,
-                     'asOfDate': np.NaN}
+                     'asOfDate': np.NaN,
+                     'currencyCode': np.NaN}
                 )
 
             temp_df = pd.DataFrame.from_records(data=one_list)
@@ -60,6 +62,10 @@ class ReadYahooFinancialData:
         df_12m = pd.concat(data_dic['12M'], axis=1, sort=True).dropna(how='all')
         df_3m = pd.concat(data_dic['3M'], axis=1, sort=True).dropna(how='all')
         df_ttm = pd.concat(data_dic['TTM'], axis=1, sort=True).dropna(how='all')
+
+        df_12m = df_12m.loc[:, ~df_12m.columns.duplicated()].copy()
+        df_3m = df_3m.loc[:, ~df_3m.columns.duplicated()].copy()
+        df_ttm = df_ttm.loc[:, ~df_ttm.columns.duplicated()].copy()
 
         return df_12m, df_3m, df_ttm
 
@@ -137,6 +143,7 @@ class YahooFinancial:
         df_to_insert = df.copy()
         df_to_insert['updated_dt'] = self.updated_dt
         df_to_insert = self._check_existing_entries_financial(df_to_check=df_to_insert, stock=stock, table=table)
+
         try:
             DatabaseManagement(df_to_insert, table=table, insert_index=True).insert_db()
             self.logger.info(f"{stock} data entered to {table} successfully")
@@ -189,4 +196,5 @@ if __name__ == '__main__':
                             targeted_pop='YAHOO_STOCK_ALL',
                             batch=True,
                             loggerFileName=None)
-    spider.run()
+
+    spider._extract_each_stock('RY')

@@ -61,7 +61,7 @@ class StockPopulation:
         sql = f"""
                 SELECT distinct ticker
                 FROM yahoo_universe
-                WHERE quoteType='{ticker_type}'
+                WHERE quoteType='{ticker_type}' and updated_dt = (select max(updated_dt) from  yahoo_universe)
             """
         df = pd.read_sql(con=self.cnn, sql=sql)
 
