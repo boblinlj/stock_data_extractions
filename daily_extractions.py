@@ -1,13 +1,14 @@
-import sys
 from modules.extract_yahoo_stats import YahooStats
 from modules.extract_etf_stats import YahooETF
-import datetime
 from util.transfer_data import UploadData2GCP
 from util.helper_functions import create_log
+import datetime
+import time
+import sys
 
 
 def DailyExtractions(runtime):
-    loggerFileName = f"daily_job_{datetime.date.today().strftime('%Y%m%d')}.log"
+    loggerFileName = f"daily_job_{datetime.date.today().strftime('%Y%m%d')}_{int(time.time())}.log"
 
     create_log(loggerName='daily_job', loggerFileName=loggerFileName)
 
@@ -19,12 +20,12 @@ def DailyExtractions(runtime):
                      '    --`yahoo_fundamental`\n')
 
     # Call the Yahoo Statistics module
-    spider2 = YahooStats(runtime,
-                         targeted_pop='YAHOO_STOCK_ALL',
-                         batch=True,
-                         loggerFileName=loggerFileName,
-                         use_tqdm=False)
-    spider2.run()
+    stock_ext = YahooStats(runtime,
+                           targeted_pop='YAHOO_STOCK_ALL',
+                           batch=True,
+                           loggerFileName=loggerFileName,
+                           use_tqdm=False)
+    stock_ext.run()
 
     sys.stderr.write(f"{'-' * 80}\n")
     sys.stderr.write("Extracting Yahoo ETF Stats\n")
@@ -34,7 +35,8 @@ def DailyExtractions(runtime):
                      '    --`yahoo_etf_annual_returns`\n'
                      '    --`yahoo_etf_holdings`\n'
                      '    --`yahoo_etf_trailing_returns`\n')
-    # Call the Yahoo ETF
+
+    # # Call the Yahoo ETF
     etf = YahooETF(runtime,
                    targeted_pop='YAHOO_ETF_ALL',
                    batch=True,
@@ -54,5 +56,6 @@ def DailyExtractions(runtime):
     UploadData2GCP(tables).run()
 
 
-runtime = datetime.datetime.today().date()
-DailyExtractions(runtime)
+if __name__ == '__main__':
+    runtime = datetime.datetime.today().date() - datetime.timedelta(days=0)
+    DailyExtractions(runtime)

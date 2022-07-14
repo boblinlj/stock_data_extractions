@@ -132,6 +132,7 @@ class YahooStats:
                                           where=f"updated_dt = '{self.updated_dt}'"
                                           ).check_population()
         stocks = returnNotMatches(stocks, existing_rec + jcfg.BLOCK)[:]
+        no_of_stock = len(stocks)
         if self.batch:
             parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
         else:
@@ -157,7 +158,10 @@ class YahooStats:
         self.logger.info("-------------Third Extract Ends-------------")
 
         end = time.time()
-        print("took {} minutes".format(round((end - start) / 60)))
+        # log the performance
+        self.logger.info("took {} minutes".format(round((end - start) / 60)))
+        # log the number of extractions
+        self.logger.info(f"{len(self.failed_extract)}/{no_of_stock} failed")
 
 
 if __name__ == '__main__':

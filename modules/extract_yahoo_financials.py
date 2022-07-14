@@ -134,9 +134,11 @@ class YahooFinancial:
 
         df_12m, df_3m, df_ttm = ReadYahooFinancialData(js).parse()
 
-        self._insert_to_db(df_12m, stock, 'yahoo_annual_fundamental')
-        self._insert_to_db(df_3m, stock, 'yahoo_quarterly_fundamental')
-        self._insert_to_db(df_ttm, stock, 'yahoo_trailing_fundamental')
+        return df_12m, df_3m, df_ttm
+
+        # self._insert_to_db(df_12m, stock, 'yahoo_annual_fundamental')
+        # self._insert_to_db(df_3m, stock, 'yahoo_quarterly_fundamental')
+        # self._insert_to_db(df_ttm, stock, 'yahoo_trailing_fundamental')
 
     def _insert_to_db(self, df, stock, table):
 
