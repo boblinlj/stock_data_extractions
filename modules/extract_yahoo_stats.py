@@ -79,6 +79,7 @@ class YahooStats:
         self.batch = batch
         self.logger = create_log(loggerName='YahooStats', loggerFileName=self.loggerFileName)
         self.use_tqdm = use_tqdm
+        self.no_of_stock = 0
 
     def _get_stock_statistics(self, stock):
         try:
@@ -101,7 +102,7 @@ class YahooStats:
         data_df = self._get_stock_statistics(stock)
 
         if data_df.empty:
-            self.logger.info('Fail to find {} data after {} trails'.format(stock, 5))
+            self.logger.debug('Fail to find {} data after {} trails'.format(stock, 5))
             self.failed_extract.append(stock)
             return stock
 
@@ -120,48 +121,32 @@ class YahooStats:
                                   key='ticker',
                                   where=f"updated_dt = '{self.updated_dt}'").check_population()
 
+    def _extract_population(self):
+        stocks = SetPopulation(self.targeted_pop).setPop()
+        stocks = dedup_list(stocks)
+        stocks = returnNotMatches(stocks, self._existing_stock_list() + jcfg.BLOCK)[:]
+        self.no_of_stock = len(stocks)
+        return stocks
+
     def run(self):
         start = time.time()
 
-        self.logger.info("----------------First Extract Ends-------------")
-        stocks = SetPopulation(self.targeted_pop).setPop()
-        stocks = dedup_list(stocks)
-        stocks = returnNotMatches(stocks, self._existing_stock_list())
-        existing_rec = DatabaseManagement(table='yahoo_fundamental',
-                                          key='ticker',
-                                          where=f"updated_dt = '{self.updated_dt}'"
-                                          ).check_population()
-        stocks = returnNotMatches(stocks, existing_rec + jcfg.BLOCK)[:]
-        no_of_stock = len(stocks)
-        if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
-        else:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
-        self.logger.info("----------------First Extract Ends-------------")
+        stocks = self._extract_population()
 
-        self.logger.info("-------------Second Extract Starts-------------")
-        stocks = dedup_list(self.failed_extract)
-        self.failed_extract = []
-        if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
-        else:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
-        self.logger.info("-------------Second Extract Ends-------------")
-
-        self.logger.info("-------------Third Extract Starts-------------")
-        stocks = dedup_list(self.failed_extract)
-        self.failed_extract = []
-        if self.batch:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
-        else:
-            parallel_process(stocks, self._extract_each_stock, n_jobs=1)
-        self.logger.info("-------------Third Extract Ends-------------")
+        for _ in range(3):
+            self.logger.info("----------------Start Extraction -------------")
+            if self.batch:
+                parallel_process(stocks, self._extract_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
+            else:
+                parallel_process(stocks, self._extract_each_stock, n_jobs=1)
+            stocks = dedup_list(self.failed_extract)
+            self.failed_extract = []
+            self.logger.info("----------------First Extract Ends-------------")
 
         end = time.time()
-        # log the performance
+
         self.logger.info("took {} minutes".format(round((end - start) / 60)))
-        # log the number of extractions
-        self.logger.info(f"{len(self.failed_extract)}/{no_of_stock} failed")
+        self.logger.info(f"{len(self.failed_extract)}/{self.no_of_stock} failed")
 
 
 if __name__ == '__main__':
@@ -170,4 +155,4 @@ if __name__ == '__main__':
                         batch=False,
                         loggerFileName=None,
                         use_tqdm=False)
-    print(spider._extract_each_stock('SNOTF'))
+    spider.run()
