@@ -23,7 +23,8 @@ def CensusExtractions(runtime):
                            targeted_pop='YAHOO_STOCK_ALL',
                            batch_run=True,
                            loggerFileName=loggerFileName,
-                           use_tqdm=True)
+                           use_tqdm=True,
+                           test_size=None)
     consus.run_job()
 
     SendEmail(content=f"""{'-'*80}\n"""
