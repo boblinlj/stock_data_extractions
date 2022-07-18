@@ -20,9 +20,11 @@ class GetWebsite:
     def __init__(self, url, proxy=True):
         self.url = url
         self.proxy = proxy
+        self.no_requests = 0
 
     def _get_session(self):
         session = requests.session()
+        self.no_requests += 1
         if self.proxy:
             session.proxies = {'http': 'socks5://{}:{}'.format(pcfg.PROXY_URL, pcfg.PROXY_PROT),
                                'https': 'socks5://{}:{}'.format(pcfg.PROXY_URL, pcfg.PROXY_PROT)}

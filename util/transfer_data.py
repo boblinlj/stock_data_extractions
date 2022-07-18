@@ -28,9 +28,10 @@ class UploadData2GCP:
         pool_size=20,
         max_overflow=0)
 
-    def __init__(self, table_to_upload: list, logger=None):
+    def __init__(self, table_to_upload: list, loggerFileName=None):
         self.table_to_upload = table_to_upload
-        self.logger = logger
+        self.loggerFileName = loggerFileName
+        self.logger = create_log(loggerName='DataUpload', loggerFileName=self.loggerFileName)
 
     def find_the_latest_entry(self, _each_table):
         sql = f"""select max(updated_dt) as updated_dt from {_each_table}"""
@@ -66,7 +67,7 @@ class UploadData2GCP:
                 df = self.extract_data(_each_table, i[0])
                 self.upload_the_data(df=df, _each_table=_each_table)
                 if self.logger:
-                    print(f"{_each_table} is updated for {i[0]} with {df.shape[0]} records")
+                    self.logger.info(f"{_each_table} is updated for {i[0]} with {df.shape[0]} records")
                 else:
                     self.logger.info(f"{_each_table} is updated for {i[0]} with {df.shape[0]} records")
 
