@@ -1,6 +1,8 @@
 import datetime
+import sys
 from util.helper_functions import create_log
 from util.transfer_data import UploadData2GCP
+from util.send_email import SendEmail
 from modules.extract_yahoo_consensus import YahooAnalysis
 
 
@@ -9,9 +11,14 @@ def CensusExtractions(runtime):
 
     create_log(loggerName='Weekly_Yahoo_Analysis_Job', loggerFileName=loggerFileName)
 
-    print(runtime)
-    print("*" * 30)
-    print("Extracting Yahoo Analysis Data")
+    sys.stderr.write(f"{'*' * 80}\n")
+    sys.stderr.write(f'Weekly job started for {runtime}\n')
+    sys.stderr.write(f"{'-' * 80}\n")
+    sys.stderr.write("Extracting Yahoo Consensus\n")
+    sys.stderr.write('This job will population tables: \n'
+                     '    --`yahoo_consensus`\n')
+    sys.stderr.write(f"{'*' * 80}\n")
+
     consus = YahooAnalysis(updated_dt=runtime,
                            targeted_pop='YAHOO_STOCK_ALL',
                            batch_run=True,
@@ -19,7 +26,18 @@ def CensusExtractions(runtime):
                            use_tqdm=True)
     consus.run_job()
 
-    UploadData2GCP(['yahoo_consensus'])
+    SendEmail(content=f"""{'-'*80}\n"""
+                      f'Weekly consensus job finished for {runtime}\n'
+                      f"""{'-'*80}\n"""
+                      f"""{consus.get_failed_extracts}/{consus.no_of_stock} Failed Extractions. \n"""
+                      f"""The job made {consus.no_of_web_calls} calls through the internet. \n"""
+                      f"""Target Table: yahoo_consensus\n"""
+                      f"""Target Population: YAHOO_STOCK_ALL\n"""
+                      f"""Log: {loggerFileName}\n"""
+                      f"""{'-'*80}\n""",
+              subject=f'Weekly consensus job has Finished - {runtime}').send()
+
+    UploadData2GCP(['yahoo_consensus'], loggerFileName=loggerFileName)
 
 
 runtime = datetime.datetime.today().date()

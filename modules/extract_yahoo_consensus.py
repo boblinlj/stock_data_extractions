@@ -1,7 +1,6 @@
 from configs import job_configs as jcfg
 from util.helper_functions import create_log
 from util.parallel_process import parallel_process
-from util.get_stock_population import StockPopulation
 from util.helper_functions import dedup_list, returnNotMatches
 from util.request_website import YahooAPIParser
 from util.database_management import DatabaseManagement
@@ -9,6 +8,7 @@ from util.get_stock_population import SetPopulation
 import pandas as pd
 from datetime import date
 import numpy as np
+import time
 
 
 class ReadYahooAnalysisData:
@@ -100,10 +100,9 @@ class ReadYahooAnalysisData:
 class YahooAnalysis:
     workers = jcfg.WORKER
     url = "https://query1.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=earningsTrend%2CearningsHistory"
-    stock_lst = StockPopulation()
+    failed_extract = []
 
-    def __init__(self, updated_dt, targeted_pop, batch_run=True, loggerFileName=None, use_tqdm=True):
-        # init the input
+    def __init__(self, updated_dt, targeted_pop, batch_run=True, loggerFileName=None, use_tqdm=True, test_size=None):
         self.updated_dt = updated_dt
         self.targeted_pop = targeted_pop
         self.batch_run = batch_run
@@ -113,15 +112,23 @@ class YahooAnalysis:
                                                key='ticker',
                                                where=f"updated_dt = '{self.updated_dt}'").check_population()
         self.use_tqdm = use_tqdm
+        self.test_size = test_size
+        # object variables for reporting purposes
+        self.no_of_stock = 0
+        self.time_decay = 0
+        self.no_of_web_calls = 0
 
     def _get_analysis_data(self, stock):
         try:
-            data = YahooAPIParser(url=self.url.format(ticker=stock), proxy=True).parse()
+            apiparse = YahooAPIParser(url=self.url.format(ticker=stock), proxy=True)
+            data = apiparse.parse()
+            self.no_of_web_calls = self.no_of_web_calls + apiparse.no_requests
             out_df = ReadYahooAnalysisData(data).parse()
             out_df['ticker'] = stock
             return out_df
         except Exception as e:
             self.logger.debug(e)
+            self.failed_extract.append(stock)
             return pd.DataFrame()
 
     def _run_each_stock(self, stock):
@@ -138,17 +145,33 @@ class YahooAnalysis:
                 self.logger.debug(f"Failed: Entering stock = {stock}, due to {e}")
 
     def run_job(self):
-
+        start = time.time()
         stocks = SetPopulation(self.targeted_pop).setPop()
 
         stocks = dedup_list(stocks)
         stock_list = returnNotMatches(stocks, self.existing_rec + jcfg.BLOCK)[:]
 
-        self.logger.info(f'There are {len(stock_list)} stocks to be extracted')
-        if self.batch_run:
-            parallel_process(stock_list, self._run_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
-        else:
-            parallel_process(stock_list, self._run_each_stock, n_jobs=1)
+        if self.test_size is not None:
+            stock_list = stock_list[:self.test_size]
+
+        self.no_of_stock = len(stocks)
+
+        self.logger.info(f'There are {self.no_of_stock} stocks to be extracted')
+        for _ in range(3):
+            self.logger.info(f"{'-' * 20}Start Extraction{'-' * 20}")
+            if self.batch_run:
+                parallel_process(stock_list, self._run_each_stock, n_jobs=self.workers, use_tqdm=self.use_tqdm)
+            else:
+                parallel_process(stock_list, self._run_each_stock, n_jobs=1)
+            stock_list = dedup_list(self.failed_extract)
+            self.failed_extract = []
+            self.logger.info(f"{'-' * 20} Extract Ends{'-' * 20}")
+        end = time.time()
+        self.time_decay = round((end - start) / 60)
+
+    @property
+    def get_failed_extracts(self):
+        return len(self.failed_extract)
 
 
 if __name__ == '__main__':

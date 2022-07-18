@@ -148,7 +148,7 @@ class YahooStats:
                 parallel_process(stocks, self._extract_each_stock, n_jobs=1)
             stocks = dedup_list(self.failed_extract)
             self.failed_extract = []
-            self.logger.info(f"{'-'*20}First Extract Ends{'-'*20}")
+            self.logger.info(f"{'-'*20}Extract Ends{'-'*20}")
 
         end = time.time()
         self.time_decay = round((end - start) / 60)

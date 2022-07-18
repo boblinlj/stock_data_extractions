@@ -1,5 +1,5 @@
 from mysql import connector
-from configs import database_configs_nas as dbconfig
+from configs import database_configs_prod as dbconfig
 from modules import extract_yahoo_financials
 import datetime
 
@@ -14,7 +14,7 @@ mydb = connector.connect(
 
 mycursor = mydb.cursor()
 
-mycursor.execute("select distinct ticker from financial.yahoo_quarterly_fundamental where currencyCode is null order by 1")
+mycursor.execute("select distinct ticker from yahoo_quarterly_fundamental where currencyCode is null order by 1")
 
 myresult = mycursor.fetchall()
 
