@@ -27,7 +27,7 @@ def DailyExtractions(runtime):
                            batch=True,
                            loggerFileName=loggerFileName,
                            use_tqdm=False,
-                           test_size=10)
+                           test_size=None)
     stock_ext.run()
 
     SendEmail(content=f"""{'-'*80}\n"""
@@ -57,7 +57,7 @@ def DailyExtractions(runtime):
                    batch=True,
                    loggerFileName=loggerFileName,
                    use_tqdm=False,
-                   test_size=5)
+                   test_size=None)
     etf.run()
 
     SendEmail(content=f"""{'-'*80}\n"""

@@ -10,7 +10,7 @@ from util.request_website import YahooAPIParser
 from util.database_management import DatabaseManagement, DatabaseManagementError
 from util.get_stock_population import SetPopulation
 
-pd.set_option('display.max_columns', None)
+# pd.set_option('display.max_columns', None)
 
 
 class ExtractionError(Exception):
@@ -90,6 +90,10 @@ class YahooFinancial:
         self.batch = batch
         self.logger = create_log(loggerName='YahooFinancialStatements', loggerFileName=self.loggerFileName)
         self.use_tqdm = use_tqdm
+        # object variables for reporting purposes
+        self.no_of_stock = 0
+        self.time_decay = 0
+        self.no_of_web_calls = 0
 
     def _existing_dt(self):
         annual_data = DatabaseManagement(table='yahoo_annual_fundamental',
@@ -118,7 +122,8 @@ class YahooFinancial:
 
     def _extract_api(self, stock):
         url = self._url_builder_fundamentals().format(stock=stock)
-        data = YahooAPIParser(url=url).parse()
+        apiparse = YahooAPIParser(url=url)
+        data = apiparse.parse()
 
         if data is None:
             self.logger.debug(f'unable to get yahoo API data for stock={stock}')
@@ -134,11 +139,9 @@ class YahooFinancial:
 
         df_12m, df_3m, df_ttm = ReadYahooFinancialData(js).parse()
 
-        return df_12m, df_3m, df_ttm
-
-        # self._insert_to_db(df_12m, stock, 'yahoo_annual_fundamental')
-        # self._insert_to_db(df_3m, stock, 'yahoo_quarterly_fundamental')
-        # self._insert_to_db(df_ttm, stock, 'yahoo_trailing_fundamental')
+        self._insert_to_db(df_12m, stock, 'yahoo_annual_fundamental')
+        self._insert_to_db(df_3m, stock, 'yahoo_quarterly_fundamental')
+        self._insert_to_db(df_ttm, stock, 'yahoo_trailing_fundamental')
 
     def _insert_to_db(self, df, stock, table):
 
