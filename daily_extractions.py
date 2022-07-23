@@ -39,7 +39,7 @@ def DailyExtractions(runtime):
                       f"""Target Population: YAHOO_STOCK_ALL\n"""
                       f"""Log: {loggerFileName}\n"""
                       f"""{'-'*80}\n""",
-              subject=f'Daily Yahoo Equity Statistics Job has Finished - {runtime}').send()
+              subject=f'[Do not reply]Daily Yahoo Equity Statistics Job has Finished - {runtime}').send()
 
     sys.stderr.write(f"{'-' * 80}\n")
     sys.stderr.write("Extracting Yahoo ETF Stats\n")
@@ -69,7 +69,7 @@ def DailyExtractions(runtime):
                       f"""Target Population: YAHOO_STOCK_ALL\n"""
                       f"""Log: {loggerFileName}\n"""
                       f"""{'-'*80}\n""",
-              subject=f'Daily Yahoo ETF Statistics Job has Finished - {runtime}').send()
+              subject=f'[Do not reply]Daily Yahoo ETF Statistics Job has Finished - {runtime}').send()
 
     # upload the data
     sys.stderr.write(f"{'*' * 80}\n")

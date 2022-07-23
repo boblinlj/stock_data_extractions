@@ -157,6 +157,7 @@ class YahooStats:
     def get_failed_extracts(self):
         return len(self.failed_extract)
 
+
 if __name__ == '__main__':
     spider = YahooStats(date(9999, 4, 20),
                         targeted_pop='YAHOO_STOCK_ALL',
